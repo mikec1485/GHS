@@ -9,4 +9,4 @@ A comprehensive walkthrough primer is also available.
 
 The script should be installed using the Scripts>Feature scripts... menu option in Pixinsight.
 
-The html documentation and image directory should be installed in the Pixinsight program file directory, within the doc>scripts directory.  Within this directory you will need to create a directory called "GeneralisedHyperbolicStretch".  the html file and images directory should then be copied into this directory.
+The html documentation and image directory should be installed in the Pixinsight program file directory, within the doc>scripts directory.  Within this directory you will need to create a directory called "GeneralisedHyperbolicStretch", the html file and images directory should then be copied into this directory.
