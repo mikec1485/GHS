@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *

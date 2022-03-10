@@ -4,7 +4,7 @@
  *
  * IMAGE INSPECTION DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -566,12 +566,8 @@ function DialogInspector(ghsViews) {
          this.histControl.updateTable();
       }
 
-
-
-
       this.dialog.imageFrame.repaint();
       this.dialog.thumbFrame.repaint();
-
    }
 
    //------------------

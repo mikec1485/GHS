@@ -4,7 +4,7 @@
  *
  * OPTIONS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -532,11 +532,22 @@ function DialogOptions(optionParameters) {
       optionParameters.previewCrossColour = this.itemText(index);
    }
 
+   this.previewCrossActive = new CheckBox(this);
+   this.previewCrossActive.text = "";
+   this.previewCrossActive.toolTip = "Check box controls whether a cross is drawn across the preview when " +
+      "the transformation has been changed and the preview is waiting for things to stabilise before updating.";
+   this.previewCrossActive.checked = optionParameters.previewCrossActive;
+   this.previewCrossActive.onCheck = function(checked)
+   {
+      optionParameters.previewCrossActive = checked;
+   }
+
    this.previewCrossControl = new HorizontalSizer(this);
    this.previewCrossControl.margin = 0;
    this.previewCrossControl.spacing = 4;
    this.previewCrossControl.add(this.previewCrossLabel);
    this.previewCrossControl.add(this.previewCrossList);
+   this.previewCrossControl.add(this.previewCrossActive);
    this.previewCrossControl.addStretch();
 
    // create Luminance R coefficient input
@@ -602,9 +613,9 @@ function DialogOptions(optionParameters) {
    this.lumSourceList.currentItem = this.lumSourceList.findItem(optionParameters.lumCoeffSource);
    this.lumSourceList.toolTip =
       "<p>Where to take the luminance coefficients from for a colour stretch. " +
-      "Default: will use equal weights for each channel. " +
-      "Image: will take the luminance coefficients from the target image rgb working space. " +
-      "Manual: will allow you to specify the coefficients to use below.</p>";
+      "<b>Default</b>: will use equal weights for each channel. " +
+      "<b>Image</b>: will take the luminance coefficients from the target image rgb working space. " +
+      "<b>Manual</b>: will allow you to specify the coefficients to use below.</p>";
    this.lumSourceList.onItemSelected = function( index )
    {
       optionParameters.lumCoeffSource = this.itemText(index);
@@ -706,6 +717,7 @@ function DialogOptions(optionParameters) {
       this.previewHeightNum.setValue(optionParameters.previewHeight);
       this.previewDelayNum.setValue(optionParameters.previewDelay);
       this.previewCrossList.currentItem = this.previewCrossList.findItem(optionParameters.previewCrossColour);
+      this.previewCrossActive.checked = optionParameters.previewCrossActive;
       this.histUnstretchActive.checked = optionParameters.graphHistActive[0];
       this.histStretchActive.checked = optionParameters.graphHistActive[1];
       this.histColList.currentItem = this.histColList.findItem(optionParameters.graphHistCol[0]);

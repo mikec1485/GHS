@@ -4,7 +4,7 @@
  *
  * OPTION PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -57,6 +57,7 @@ function GHSOptionParameters() {
    this.previewHeight = 600;
    this.previewDelay = .2;
    this.previewCrossColour = "Yellow";
+   this.previewCrossActive = true;
    this.colourClip = "Clip";     // can be "Clip" or "Rescale"
    this.lumCoeffSource = "Default"; // can be "Default", "Image", or "Manual"
    this.lumCoefficients = [1, 1, 1];
@@ -77,15 +78,15 @@ function GHSOptionParameters() {
       returnValue.graphHistActive.push(this.graphHistActive[0]);
       returnValue.graphHistActive.push(this.graphHistActive[1]);
 
-      returnValue.graphHistCol = new Array("Light grey", "Mid grey");
+      returnValue.graphHistCol = new Array();
       returnValue.graphHistCol.push(this.graphHistCol[0]);
       returnValue.graphHistCol.push(this.graphHistCol[1]);
 
-      returnValue.graphHistType = new Array("Draw", "Fill");
+      returnValue.graphHistType = new Array();
       returnValue.graphHistType.push(this.graphHistType[0]);
       returnValue.graphHistType.push(this.graphHistType[1]);
 
-      returnValue.graphRGBHistCol = new Array("Light","Mid");
+      returnValue.graphRGBHistCol = new Array();
       returnValue.graphRGBHistCol.push(this.graphRGBHistCol[0]);
       returnValue.graphRGBHistCol.push(this.graphRGBHistCol[1]);
 
@@ -104,6 +105,7 @@ function GHSOptionParameters() {
       returnValue.previewHeight = this.previewHeight;
       returnValue.previewDelay = this.previewDelay;
       returnValue.previewCrossColour = this.previewCrossColour;
+      returnValue.previewCrossActive = this.previewCrossActive;
 
       returnValue.colourClip = this.colourClip;
       returnValue.lumCoeffSource = this.lumCoeffSource;
@@ -144,6 +146,7 @@ function GHSOptionParameters() {
       this.previewHeight = ghsOP.previewHeight;
       this.previewDelay = ghsOP.previewDelay;
       this.previewCrossColour = ghsOP.previewCrossColour;
+      this.previewCrossActive = ghsOP.previewCrossActive;
 
       this.colourClip = ghsOP.colourClip;
       this.lumCoeffSource = ghsOP.lumCoeffSource;
@@ -188,6 +191,8 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/previewWidth", 5, this.previewWidth);
       Settings.write(KEYPREFIX + "/previewHeight", 5, this.previewHeight);
       Settings.write(KEYPREFIX + "/previewDelay", 9, this.previewDelay);
+      Settings.write(KEYPREFIX + "/previewCrossColour", 13, this.previewCrossColour);
+      Settings.write(KEYPREFIX + "/previewCrossActive", 0, this.previewCrossActive);
       Settings.write(KEYPREFIX + "/lumCoeffSource", 13, this.lumCoeffSource);
       Settings.write(KEYPREFIX + "/colourClip", 13, this.colourClip);
       Settings.write(KEYPREFIX + "/lumCoefficients0", 9, this.lumCoefficients[0]);
@@ -258,6 +263,10 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.previewHeight = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewDelay", 9);
       if (Settings.lastReadOK) this.previewDelay = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/previewCrossColour", 13);
+      if (Settings.lastReadOK) this.previewCrossColour = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/previewCrossActive", 0);
+      if (Settings.lastReadOK) this.previewCrossActive = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/lumCoeffSource", 13);
       if (Settings.lastReadOK) this.lumCoeffSource = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/colourClip", 13);

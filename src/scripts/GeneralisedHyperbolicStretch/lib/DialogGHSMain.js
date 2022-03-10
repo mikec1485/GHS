@@ -4,7 +4,7 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -985,7 +985,11 @@ function DialogGHSMain() {
    this.LCPControl.resetButton.onClick = function()
    {
       if ( !(this.dialog.targetView.id == "") ) {
-         stretchParameters.BP = clipLow(0, this.dialog.channels(), ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]);
+         let channels = this.dialog.channels();
+         if (stretchParameters.channelSelector[0]) channels = [0];
+         if (stretchParameters.channelSelector[1]) channels = [1];
+         if (stretchParameters.channelSelector[2]) channels = [2];
+         stretchParameters.BP = clipLow(0, channels, ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]);
          if (!(stretchParameters.BP < stretchParameters.WP))
          {
             let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
@@ -1047,7 +1051,11 @@ function DialogGHSMain() {
    this.HCPControl.resetButton.onClick = function()
    {
       if ( !(this.dialog.targetView.id == "") ) {
-         stretchParameters.WP = clipHigh(0, this.dialog.channels(), ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]);
+         let channels = this.dialog.channels();
+         if (stretchParameters.channelSelector[0]) channels = [0];
+         if (stretchParameters.channelSelector[1]) channels = [1];
+         if (stretchParameters.channelSelector[2]) channels = [2];
+         stretchParameters.WP = clipHigh(0, channels, ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]);
          if (!(stretchParameters.BP < stretchParameters.WP))
          {
             let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
@@ -1152,7 +1160,8 @@ function DialogGHSMain() {
    this.imagePreview.setFixedSize(optionParameters.previewWidth, optionParameters.previewHeight);
    this.imagePreview.setStretch( ghsStretch );
    this.imagePreview.backgroundColor = 0xffc0c0c0;
-   this.crossColour = optionParameters.previewCrossColour;
+   this.imagePreview.crossColour = optionParameters.previewCrossColour;
+   this.imagePreview.crossActive = optionParameters.previewCrossActive;
    this.imagePreview.targetView = this.targetView;
 
    this.optionShowButtons = new GroupBox(this);
@@ -1160,27 +1169,23 @@ function DialogGHSMain() {
    this.optShowPreview = new RadioButton(this.optionShowButtons);
    this.optShowPreview.text = "Show preview";
    this.optShowPreview.checked = this.imagePreview.showPreview;
+   this.optShowPreview.toolTip = "<p>Show image with stretch applied - alternatively ctrl-click " +
+      "(cmd-click on a Mac) on the image to toggle between preview and target view."
    this.optShowPreview.onCheck = function(checked)
    {
-      let timerWasRunning = this.dialog.previewTimer.isRunning;
-      this.dialog.previewTimer.stop();
+      this.dialog.imagePreview.showPreview = checked;
       this.dialog.imagePreview.invalidPreview = true;
-      this.dialog.imagePreview.showPreview = true;
-      this.dialog.imagePreview.stretchPreview();
-      if (timerWasRunning) this.dialog.previewTimer.start();
    }
 
    this.optShowTarget = new RadioButton(this.optionShowButtons);
    this.optShowTarget.text = "Show target view";
    this.optShowTarget.checked = !this.imagePreview.showPreview;
+   this.optShowTarget.toolTip = "<p>Show image without stretch applied, ie current target view - " +
+      "alternatively ctrl-click (cmd-click on a Mac) on the image to toggle between preview and target view.</p>"
    this.optShowTarget.onCheck = function(checked)
    {
-      let timerWasRunning = this.dialog.previewTimer.isRunning;
-      this.dialog.previewTimer.stop();
+      this.dialog.imagePreview.showPreview = !checked;
       this.dialog.imagePreview.invalidPreview = true;
-      this.dialog.imagePreview.showPreview = false;
-      this.dialog.imagePreview.stretchPreview();
-      if (timerWasRunning) this.dialog.previewTimer.start();
    }
 
    this.zoomLabel = new Label(this.optionShowButtons);
@@ -1190,8 +1195,8 @@ function DialogGHSMain() {
    this.resetZoomButton = new ToolButton(this.optionShowButtons)
    this.resetZoomButton.icon = this.scaledResource( ":/toolbar/view-zoom-fit.png" );
    this.resetZoomButton.setScaledFixedSize( 24, 24 );
-   this.resetZoomButton.toolTip = "Click and drag on the image to specify a region of interest to zoom into. " +
-            "Clicking on this button will reset to fit the whole image.";
+   this.resetZoomButton.toolTip = "<p>Click and drag on the image to specify a region of interest to zoom into. " +
+            "Clicking on this button will reset to fit the whole image.</p>";
    this.resetZoomButton.onClick = function(checked)
    {
       this.dialog.imagePreview.resetImage();
@@ -1207,7 +1212,7 @@ function DialogGHSMain() {
 
    this.previewTimer.onTimeout = function()
    {
-      let currentSPKey = longStretchKey(ghsStretch, this.dialog.targetView);
+      let currentSPKey = longStretchKey(ghsStretch, this.dialog.targetView) + this.dialog.imagePreview.imageSelection.toString();
       let noParameterChangesSinceLastCheck = (this.lastSPKeyCheck == currentSPKey);
       let parametersChangedSinceLastUpdate = (currentSPKey != this.dialog.imagePreview.lastStretchKey);
       let timeToUpdate = noParameterChangesSinceLastCheck && (parametersChangedSinceLastUpdate || this.dialog.imagePreview.invalidPreview);
@@ -1220,8 +1225,8 @@ function DialogGHSMain() {
          this.busy = true;
 
          this.dialog.imagePreview.invalidPreview = true;
+         if (!parametersChangedSinceLastUpdate) this.dialog.imagePreview.invalidPreview = false;
          this.dialog.imagePreview.stretchPreview();
-         //this.dialog.updateControls();
 
          this.busy = false;
          this.start();
@@ -1623,6 +1628,7 @@ this.newImageRefresh = function()
       this.imagePreview.setFixedSize(ghsOP.previewWidth, ghsOP.previewHeight);
       this.previewTimer.interval = ghsOP.previewDelay;
       this.imagePreview.crossColour = ghsOP.previewCrossColour;
+      this.imagePreview.crossActive = ghsOP.previewCrossActive;
    }
 
 /*******************************************************************************
@@ -1891,7 +1897,7 @@ this.newImageRefresh = function()
          // Update preview
          if ((this.showRTP) && (!this.imagePreview.invalidPreview))
          {
-            if (this.imagePreview.lastStretchKey != longStretchKey(ghsStretch, this.targetView))
+            if (this.imagePreview.lastStretchKey != longStretchKey(ghsStretch, this.targetView) + this.imagePreview.imageSelection.toString())
             {
                this.imagePreview.invalidPreview = true;
                this.imagePreview.repaint();

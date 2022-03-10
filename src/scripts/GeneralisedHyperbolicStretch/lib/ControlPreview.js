@@ -4,7 +4,7 @@
  *
  * PREVIEW CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.0.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -55,6 +55,7 @@ function ControlPreview()
    this.maskInverted = false;
    this.stretching = false;
    this.crossColour = 0xffffff00;
+   this.crossActive = true;
 
    this.dragging = false;
    this.dragFrom = new Point();
@@ -131,6 +132,17 @@ function ControlPreview()
 
       if (this.invalidPreview) {this.repaint();}
       processEvents();
+
+      let currentKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
+      if (currentKey == this.lastStretchKey)
+      {
+         this.invalidPreview = false;
+         this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
+         this.repaint();
+         processEvents();
+         this.stretching = false;
+         return;
+      }
 
       this.previewImage = new Image(this.originalImage);
 
@@ -410,7 +422,7 @@ function ControlPreview()
       orgImg.free();
 
       this.invalidPreview = false;
-      this.lastStretchKey = longStretchKey(this.stretch, this.targetView);
+      this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
       this.repaint();
       processEvents();
       this.stretching = false;
@@ -452,7 +464,7 @@ function ControlPreview()
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
          g.drawBitmap(this.viewPort().leftTop, bmp);
          bmp.clear();
-         if (this.invalidPreview)
+         if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
             g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
@@ -465,7 +477,7 @@ function ControlPreview()
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
          g.drawBitmap(this.viewPort().leftTop, bmp);
          bmp.clear();
-         if (this.invalidPreview)
+         if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
             g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
@@ -480,8 +492,18 @@ function ControlPreview()
 
    this.onMousePress = function(x, y, button, buttonState, modifiers)
    {
-      this.dragging = true;
-      this.dragFrom = new Point(x, y);
+      if (modifiers == KeyModifier_Control)
+      {
+         let showPreview = !this.dialog.optShowPreview.checked;
+         this.dialog.optShowPreview.checked = showPreview;
+         this.dialog.optShowTarget.checked = !showPreview;
+      }
+      else
+      {
+         this.dragging = true;
+         this.dragFrom = new Point(x, y);
+         this.dragTo = new Point(x, y);
+      }
    }
 
    this.onMouseMove = function(x, y, buttonState, modifiers)
@@ -497,7 +519,7 @@ function ControlPreview()
    {
       if (this.dragging)
       {
-         if (this.dragRect().area > 0)
+         if (this.dragRect().area > 1)
          {
             let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
             let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
@@ -521,11 +543,11 @@ function ControlPreview()
             }
             this.stretchPreview();
          }
-
+         this.dragFrom = new Point();
+         this.dragTo = new Point();
          this.dragging = false;
          this.repaint();
       }
    }
-
 }
 ControlPreview.prototype = new Frame;
