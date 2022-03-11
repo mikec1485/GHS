@@ -1333,6 +1333,7 @@ function DialogGHSMain() {
 
             Console.hide();
 
+            this.imagePreview.lastStretchKey = "";
             this.newImageRefresh();
             this.updateControls();
 
@@ -1375,6 +1376,7 @@ function DialogGHSMain() {
          this.previewTimer.start();
          this.rtpButton.icon = this.scaledResource( ":/process-interface/real-time-active.png" );
       }
+      this.imagePreview.lastStretchKey = "";
       this.previewRefresh();
    }
 
@@ -1391,6 +1393,7 @@ function DialogGHSMain() {
          this.previewTimer.stop();
          this.targetView.historyIndex -=1;
          ghsLog.undo(this.targetView.id);
+         this.imagePreview.lastStretchKey = "";
          if (timerWasRunning) this.previewTimer.start();
       }
       this.newImageRefresh();
@@ -1408,6 +1411,7 @@ function DialogGHSMain() {
          this.previewTimer.stop();
          this.targetView.historyIndex +=1;
          ghsLog.redo(this.targetView.id);
+         this.imagePreview.lastStretchKey = "";
          if (timerWasRunning) this.previewTimer.start();
       }
       this.newImageRefresh();
@@ -1510,6 +1514,7 @@ function DialogGHSMain() {
 
       if (lumCoeffsChanged || colourClipChanged) this.imagePreview.lastStretchKey = "";
 
+      this.imagePreview.lastStretchKey = "";
       if (timerWasRunning) this.previewTimer.start();
 
       this.updateControls();
