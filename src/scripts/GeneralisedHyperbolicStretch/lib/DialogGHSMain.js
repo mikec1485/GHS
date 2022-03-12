@@ -1751,6 +1751,7 @@ this.newImageRefresh = function()
             this.logHistButton.enabled = false;
             this.invertMaskCheck.checked = false;
             this.invertMaskCheck.enabled = false;
+            this.showMaskCheck.enabled = false;
             this.maskList.enabled = false;
          }
          else
@@ -1765,6 +1766,7 @@ this.newImageRefresh = function()
             this.histUpdateButton.enabled = true;
             this.logHistButton.enabled = true
             this.invertMaskCheck.enabled = true;
+            this.showMaskCheck.enabled = true;
             this.maskList.enabled = true;
          }
 
