@@ -1199,6 +1199,7 @@ function DialogGHSMain() {
             "Clicking on this button will reset to fit the whole image.</p>";
    this.resetZoomButton.onClick = function(checked)
    {
+      this.dialog.imagePreview.lastStretchKey = "";
       this.dialog.imagePreview.resetImage();
    }
 
@@ -1512,7 +1513,7 @@ function DialogGHSMain() {
          }
       }
 
-      if (lumCoeffsChanged || colourClipChanged) this.imagePreview.lastStretchKey = "";
+      //if (lumCoeffsChanged || colourClipChanged) this.imagePreview.lastStretchKey = "";
 
       this.imagePreview.lastStretchKey = "";
       if (timerWasRunning) this.previewTimer.start();
@@ -2122,8 +2123,6 @@ this.newImageRefresh = function()
    this.setOptionParameters(optionParameters);
    this.updateControls();
 
-   //this.leftPanel.adjustToContents();
-   //this.rightPanel.adjustToContents();
    this.adjustToContents();
    this.setVariableSize();
 
