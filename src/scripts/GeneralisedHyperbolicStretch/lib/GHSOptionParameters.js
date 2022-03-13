@@ -40,6 +40,7 @@ function GHSOptionParameters() {
    this.selectNewImage = true;
    this.saveLogCheck = true;
    this.startupRTP = true;
+   this.zoomMax = 200;
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
    this.graphHistType = new Array("Draw", "Fill");
@@ -73,6 +74,7 @@ function GHSOptionParameters() {
       returnValue.selectNewImage = this.selectNewImage;
       returnValue.saveLogCheck = this.saveLogCheck;
       returnValue.startupRTP = this.startupRTP;
+      returnValue.zoomMax = this.zoomMax;
 
       returnValue.graphHistActive = new Array();
       returnValue.graphHistActive.push(this.graphHistActive[0]);
@@ -125,6 +127,7 @@ function GHSOptionParameters() {
       this.selectNewImage = ghsOP.selectNewImage;
       this.saveLogCheck = ghsOP.saveLogCheck;
       this.startupRTP = ghsOP.startupRTP;
+      this.zoomMax = ghsOP.zoomMax;
 
       this.graphHistActive = ghsOP.graphHistActive;
       this.graphHistCol = ghsOP.graphHistCol;
@@ -191,6 +194,7 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/previewWidth", 5, this.previewWidth);
       Settings.write(KEYPREFIX + "/previewHeight", 5, this.previewHeight);
       Settings.write(KEYPREFIX + "/previewDelay", 9, this.previewDelay);
+      Settings.write(KEYPREFIX + "/zoomMax", 5, this.zoomMax);
       Settings.write(KEYPREFIX + "/previewCrossColour", 13, this.previewCrossColour);
       Settings.write(KEYPREFIX + "/previewCrossActive", 0, this.previewCrossActive);
       Settings.write(KEYPREFIX + "/lumCoeffSource", 13, this.lumCoeffSource);
@@ -263,6 +267,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.previewHeight = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewDelay", 9);
       if (Settings.lastReadOK) this.previewDelay = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/zoomMax", 5);
+      if (Settings.lastReadOK) this.zoomMax = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewCrossColour", 13);
       if (Settings.lastReadOK) this.previewCrossColour = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewCrossActive", 0);

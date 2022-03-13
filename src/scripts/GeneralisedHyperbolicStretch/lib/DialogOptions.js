@@ -181,7 +181,7 @@ function DialogOptions(optionParameters) {
    this.previewHeightSizer.addStretch();
    this.previewHeightSizer.add(this.previewHeightNum);
 
-   // create preview height input
+   // create preview delay input
    this.previewDelayNum = new NumericEdit( this );
    this.previewDelayNum.label.text = "Preview delay";
    this.previewDelayNum.setRange(.1, 2);
@@ -198,6 +198,25 @@ function DialogOptions(optionParameters) {
    this.previewDelaySizer = new HorizontalSizer();
    this.previewDelaySizer.addStretch();
    this.previewDelaySizer.add(this.previewDelayNum);
+
+   // create zoom maximum input
+   this.zoomMaxNum = new NumericEdit( this );
+   this.zoomMaxNum.label.text = "Zoom maximum";
+   this.zoomMaxNum.setRange(100, 10000);
+   this.zoomMaxNum.setPrecision(0);
+   this.zoomMaxNum.setValue(optionParameters.zoomMax);
+   this.zoomMaxNum.toolTip =
+         "<p>Specify the maximim zoom ratio for the histogram zoom slider. " +
+         "<b>Warning</b>: If this is set too high the sliders will become sticky when high zoom levels are selected. " +
+         "The optimum setting will depend upon the processing power of your computer. " +
+         "Note also that at higher zoom levels the histogram can become blocky in appearance.</p>";
+   this.zoomMaxNum.onValueUpdated = function( value )
+   {
+      optionParameters.zoomMax = value;
+   }
+   this.zoomMaxSizer = new HorizontalSizer();
+   this.zoomMaxSizer.addStretch();
+   this.zoomMaxSizer.add(this.zoomMaxNum);
 
    //create histogram picker headings graphHistActive
    this.histHeadLabel1 = new Label(this);
@@ -713,6 +732,7 @@ function DialogOptions(optionParameters) {
       this.selectNewImage.checked = optionParameters.selectNewImage;
       this.saveLogCheck.checked = optionParameters.saveLogCheck;
       this.startupRTPCheck.checked = optionParameters.startupRTP;
+      this.zoomMaxNum.setValue(optionParameters.zoomMax);
       this.previewWidthNum.setValue(optionParameters.previewWidth);
       this.previewHeightNum.setValue(optionParameters.previewHeight);
       this.previewDelayNum.setValue(optionParameters.previewDelay);
@@ -773,6 +793,8 @@ function DialogOptions(optionParameters) {
    this.optionPickerRight.add(this.previewHeightSizer);
    this.optionPickerRight.addSpacing(layoutSpacing);
    this.optionPickerRight.add(this.previewDelaySizer);
+   this.optionPickerRight.addSpacing(4 * layoutSpacing);
+   this.optionPickerRight.add(this.zoomMaxSizer);
 
    this.optionPicker = new HorizontalSizer( this );
    this.optionPicker.margin = 32;
