@@ -52,6 +52,7 @@ function ControlStretchGraph()
    this.graphZoomCentre = 0.0;
    this.clickLevel = -1;
    this.logHistogram = false;
+   this.normWRTBase = false;
 
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
@@ -297,7 +298,8 @@ function ControlStretchGraph()
 
          let maxNormFac =  new Array;
          maxNormFac.push(Math.maxElem(normFac));
-         maxNormFac.push(Math.maxElem(normStretchFac));
+         if (this.normWRTBase) {maxNormFac.push(Math.maxElem(normFac));}
+         else {maxNormFac.push(Math.maxElem(normStretchFac));}
 
          // modify plot arays if user wants a logarithmic plot otherwise just normalise data
          for (let c = 0; c < channels.length; ++c)

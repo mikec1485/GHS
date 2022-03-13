@@ -325,7 +325,30 @@ function DialogGHSMain() {
       }
       this.dialog.updateControls();
    }
-
+/*
+   // prepare the toggle button between normalising each histogram separately or normalising both to the unstretched histogram
+   this.normBaseButton = new ToolButton( this );
+   this.normBaseButton.icon = this.scaledResource( ":/icons/unlock.png" );
+   this.normBaseButton.setScaledFixedSize( 24, 24 );
+   this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
+            "Currently showing separate normalisation.</p>";
+   this.normBaseButton.onClick = () => {
+      this.dialog.stretchGraph.normWRTBase = !this.dialog.stretchGraph.normWRTBase;
+      if (this.dialog.stretchGraph.normWRTBase)
+      {
+         this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
+            "Currently showing common normalisation.</p>";
+         this.normBaseButton.icon = this.scaledResource( ":/icons/lock.png" );
+      }
+      else
+      {
+         this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
+            "Currently showing separate normalisation.</p>";
+         this.normBaseButton.icon = this.scaledResource( ":/icons/unlock.png" );
+      }
+      this.dialog.updateControls();
+   }
+*/
    // layout channel selector checkboxes
    this.channelSelectorControls = new HorizontalSizer( this )
    this.channelSelectorControls.margin = 0;
@@ -338,6 +361,7 @@ function DialogGHSMain() {
    this.channelSelectorControls.add(this.selectSCheck);
    this.channelSelectorControls.add(this.selectLumCheck);
    this.channelSelectorControls.addStretch();
+   //this.channelSelectorControls.add(this.normBaseButton);
    this.channelSelectorControls.add(this.logHistButton);
    this.channelSelectorControls.add(this.histUpdateButton);
 
@@ -358,7 +382,7 @@ function DialogGHSMain() {
    this.zoomControl = new NumericControl(this);
    this.zoomControl.label.text = "Zoom:";
    this.zoomControl.label.minWidth = minLabelWidth;
-   this.zoomControl.setRange(1.0, 200);
+   this.zoomControl.setRange(1.0, optionParameters.zoomMax);
    var zoomPrecision = 2;
    this.zoomControl.setPrecision( zoomPrecision );
    this.zoomControl.slider.setRange( 1.0, Math.pow10(zoomPrecision) );
@@ -845,11 +869,18 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.SP);
       this.dialog.updateControls();
    }
-   this.SPControl.resetButton.toolTip = "Reset " + stretchParameters.name_SP + " to " +
-            stretchParameters.default_SP.toFixed(stretchParameters.LPSPHPPrecision) + ".";
+   this.SPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_SP + " to the readout value if selected, otherwise set to " +
+            stretchParameters.default_SP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.SPControl.resetButton.onClick = function()
    {
-      stretchParameters.SP = stretchParameters.default_SP;
+      if (this.dialog.stretchGraph.clickLevel < 0.0)
+      {
+         stretchParameters.SP = stretchParameters.default_SP;
+      }
+      else
+      {
+         stretchParameters.SP = Math.max(stretchParameters.LP, Math.min(stretchParameters.HP, this.dialog.stretchGraph.clickLevel));
+      }
       this.dialog.updateControls();
    }
 
@@ -885,11 +916,18 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.LP);
       this.dialog.updateControls();
    }
-   this.LPControl.resetButton.toolTip = "Reset " + stretchParameters.name_LP + " to " +
-            stretchParameters.default_LP.toFixed(stretchParameters.LPSPHPPrecision) + ".";
+   this.LPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_LP + " to the readout value if selected, otherwise set to " +
+            stretchParameters.default_LP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.LPControl.resetButton.onClick = function()
    {
-      stretchParameters.LP = stretchParameters.default_LP;
+      if (this.dialog.stretchGraph.clickLevel < 0.0)
+      {
+         stretchParameters.LP = stretchParameters.default_LP;
+      }
+      else
+      {
+         stretchParameters.LP = Math.min(stretchParameters.SP, this.dialog.stretchGraph.clickLevel);
+      }
       this.dialog.updateControls();
    }
 
@@ -924,11 +962,18 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.HP);
       this.dialog.updateControls();
    }
-   this.HPControl.resetButton.toolTip = "Reset " + stretchParameters.name_HP + " to " +
-            stretchParameters.default_HP.toFixed(stretchParameters.LPSPHPPrecision) + ".";
+   this.HPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_HP + " to the readout value if selected, otherwise set to " +
+            stretchParameters.default_HP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.HPControl.resetButton.onClick = function()
    {
-      stretchParameters.HP = stretchParameters.default_HP;
+      if (this.dialog.stretchGraph.clickLevel < 0.0)
+      {
+         stretchParameters.HP = stretchParameters.default_HP;
+      }
+      else
+      {
+         stretchParameters.HP = Math.max(stretchParameters.SP, this.dialog.stretchGraph.clickLevel);
+      }
       this.dialog.updateControls();
    }
 
@@ -1635,6 +1680,11 @@ this.newImageRefresh = function()
       this.previewTimer.interval = ghsOP.previewDelay;
       this.imagePreview.crossColour = ghsOP.previewCrossColour;
       this.imagePreview.crossActive = ghsOP.previewCrossActive;
+
+      let v = this.zoomControl.value;
+      this.zoomControl.setValue(Math.min(v, ghsOP.zoomMax));
+      this.stretchGraph.graphRange = 1.0 / this.zoomControl.value;
+      this.zoomControl.setRange(1.0, ghsOP.zoomMax);
    }
 
 /*******************************************************************************
