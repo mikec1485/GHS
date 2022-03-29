@@ -277,9 +277,9 @@ function generatePixelMathAutoSTF(view, linked = false)
 
 function calculateHistograms(view, lumCoefficients)
 {
-   let resolution = Math.pow2(16);
+   let resolution = 1 << 16;
    let channelCount = 1;
-   let histograms = [new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16))];
+   let histograms = [new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution)];
    let histArrays = [new Array(), new Array(), new Array(), new Array(), new Array(), new Array()];
    let cumHistArrays = [new Array(), new Array(), new Array(), new Array(), new Array(), new Array()];
 
@@ -363,7 +363,7 @@ function getLuminanceHistogram(view, lumCoefficients)
    view.image.colorSpace = ColorSpace_CIEXYZ;
    view.image.selectedChannel = 1;
 
-   let resolution = Math.pow2(16);
+   let resolution = 1 << 16;
    let histogram = new Histogram(resolution);
    histogram.generate(view.image);
 

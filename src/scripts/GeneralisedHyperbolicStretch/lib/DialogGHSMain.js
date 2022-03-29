@@ -25,14 +25,6 @@
 // this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 
-#include <pjsr/Sizer.jsh>
-#include <pjsr/NumericControl.jsh>
-#include <pjsr/SectionBar.jsh>
-#include <pjsr/UndoFlag.jsh>
-#include <pjsr/ColorSpace.jsh>
-#include <pjsr/ImageOp.jsh>
-#include <pjsr/TextAlign.jsh>
-
 #include "DialogOptions.js"
 #include "DialogLog.js"
 #include "DialogInspector.js"
@@ -49,15 +41,18 @@ function DialogGHSMain() {
 
    var ghsStretch = new GHSStretch();
    var stretchParameters = ghsStretch.stretchParameters;
+   stretchParameters.version = VERSION;
    ghsStretch.dialog = this;
 
    this.optionParameters = new GHSOptionParameters();
    var optionParameters =this.optionParameters;
    optionParameters.load();
 
-   var ghsLog = new GHSLog();
+   this.ghsLog = new GHSLog();
+   var ghsLog = this.ghsLog;
 
-   var ghsViews = new GHSViews();
+   this.ghsViews = new GHSViews();
+   var ghsViews = this.ghsViews;
    ghsViews.stretch = ghsStretch;
    ghsViews.dialog = this;
 
@@ -73,44 +68,10 @@ function DialogGHSMain() {
       return [0, 1, 2];
    }
 
-   this.getLumCoefficients = function()
-   {
-      let lR = (1 / 3);
-      let lG = (1 / 3);
-      let lB = (1 / 3);
-      if (optionParameters.lumCoeffSource == "Image")
-      {
-         if (this.targetView.id != "")
-         {
-            let rgbWS = this.targetView.window.rgbWorkingSpace;
-            lR = rgbWS.Y[0];
-            lG = rgbWS.Y[1];
-            lB = rgbWS.Y[2];
-         }
-         else
-         {
-            let lR = (1 / 3);
-            let lG = (1 / 3);
-            let lB = (1 / 3);
-         }
-      }
-      if (optionParameters.lumCoeffSource == "Manual")
-      {
-         lR = optionParameters.lumCoefficients[0];
-         lG = optionParameters.lumCoefficients[1];
-         lB = optionParameters.lumCoefficients[2];
-         let total = lR + lG + lB;
-         lR = lR / total;
-         lG = lG / total;
-         lB = lB / total;
-      }
-
-      return [lR, lG, lB];
-   }
-
    this.showRTP = optionParameters.startupRTP;
 
    this.suspendUpdating = false;
+   this.isBusy = false;
 
    /// let the dialog be resizable
    this.userResizable = true;
@@ -119,6 +80,9 @@ function DialogGHSMain() {
 
    this.windowTitle = TITLE + " - Version: " + VERSION
 
+   //------------------------
+   // Deal with toggle events|
+   //------------------------
    this.onToggleSection = function(bar, beginToggle)
    {
       if (beginToggle){}
@@ -130,21 +94,12 @@ function DialogGHSMain() {
       }
    }
 
+   //-----------------------------------
+   // Ensure smooth exit from the dialog|
+   //-----------------------------------
    this.onHide = function()
    {
       this.previewTimer.stop();
-      ghsViews.tidyUp();
-      optionParameters.save(VERSION);
-      if (optionParameters.saveLogCheck)
-      {
-         let warnMessage = "Do you want to save your log before leaving?";
-         let msgReturn = (new MessageBox( warnMessage, "Warning", StdIcon_Question, StdButton_Yes, StdButton_No )).execute();
-         if (msgReturn == StdButton_Yes)
-         {
-            let logViewDialog = new DialogLog(ghsLog);
-            logViewDialog.execute();
-         }
-      }
    };
 
 /*******************************************************************************
@@ -154,9 +109,14 @@ function DialogGHSMain() {
    //----------------------------------
    // Create graphical display controls|
    //----------------------------------
+   this.stretchGraphHeight = 250
    this.stretchGraph = new ControlStretchGraph(this);
-   this.stretchGraph.toolTip = "<b>Click</b> to see readout at that point.  <b>Double click</b> to centre zoom at that point"
-   this.stretchGraph.setMinSize(400, 250);
+   this.stretchGraph.toolTip = "<b>Click</b> to see readout at that point.  <b>Double click</b> to centre zoom at that point. " +
+         "Transfer readout value to transformation parameters  by clicking reset button alongside relevant slider."
+   this.stretchGraph.graphBlockActive = optionParameters.graphBlockActive;
+   let sgh = this.stretchGraphHeight;
+   if (this.stretchGraph.graphBlockActive) sgh = Math.floor(sgh / .9)
+   this.stretchGraph.setMinSize(400, sgh);
    this.stretchGraph.stretch = ghsStretch;
    this.stretchGraph.targetView = this.targetView;
    this.stretchGraph.views = ghsViews;
@@ -325,30 +285,7 @@ function DialogGHSMain() {
       }
       this.dialog.updateControls();
    }
-/*
-   // prepare the toggle button between normalising each histogram separately or normalising both to the unstretched histogram
-   this.normBaseButton = new ToolButton( this );
-   this.normBaseButton.icon = this.scaledResource( ":/icons/unlock.png" );
-   this.normBaseButton.setScaledFixedSize( 24, 24 );
-   this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
-            "Currently showing separate normalisation.</p>";
-   this.normBaseButton.onClick = () => {
-      this.dialog.stretchGraph.normWRTBase = !this.dialog.stretchGraph.normWRTBase;
-      if (this.dialog.stretchGraph.normWRTBase)
-      {
-         this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
-            "Currently showing common normalisation.</p>";
-         this.normBaseButton.icon = this.scaledResource( ":/icons/lock.png" );
-      }
-      else
-      {
-         this.normBaseButton.toolTip = "<p>Toggle between normalising stretched and unstretched histograms separately, or normalising them to a common base. " +
-            "Currently showing separate normalisation.</p>";
-         this.normBaseButton.icon = this.scaledResource( ":/icons/unlock.png" );
-      }
-      this.dialog.updateControls();
-   }
-*/
+
    // layout channel selector checkboxes
    this.channelSelectorControls = new HorizontalSizer( this )
    this.channelSelectorControls.margin = 0;
@@ -361,7 +298,6 @@ function DialogGHSMain() {
    this.channelSelectorControls.add(this.selectSCheck);
    this.channelSelectorControls.add(this.selectLumCheck);
    this.channelSelectorControls.addStretch();
-   //this.channelSelectorControls.add(this.normBaseButton);
    this.channelSelectorControls.add(this.logHistButton);
    this.channelSelectorControls.add(this.histUpdateButton);
 
@@ -747,10 +683,9 @@ function DialogGHSMain() {
    this.inverseTransfCheck.text = "Invert transformation";
    this.inverseTransfCheck.checked = stretchParameters.Inv;
    this.inverseTransfCheck.toolTip =
-         "<p>Check here to use the inverse form of the transformation equations. " +
-         "This can be useful to recover a previous state of the image if undo is not" +
-         " available - assuming you know the stretch parameters used.  Stretch parameters" +
-         " can be saved using the log facility.</p>";
+         "<p>Check here to use the inverse form of the transformation equations." +
+         " <b>Warning:</b> Some transformations can involve clipping and are not truly invertible." +
+         " Eg, this may apply for L*, Sat and Col options and for Linear Stretch types.</p>";
    this.inverseTransfCheck.onCheck = function( checked )
    {
       stretchParameters.Inv = checked;
@@ -807,7 +742,7 @@ function DialogGHSMain() {
    *********** create the b input slider *************************************
 */
 
-   this.bControl = new ControlParamInput(stretchParameters.b, -10, 10, stretchParameters.bPrecision, stretchParameters.name_b, minLabelWidth);
+   this.bControl = new ControlParamInput(stretchParameters.b, -5, 15, stretchParameters.bPrecision, stretchParameters.name_b, minLabelWidth);
    this.bControl.numControl.toolTip = "<p>Controls how tightly focused the stretch is around " + stretchParameters.name_SP +
       " by changing the form of the transform iteself. For concentrated stretches (such as initial stretches on linear images)" +
       " a large +ve b factor should be employed to focus" +
@@ -869,7 +804,7 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.SP);
       this.dialog.updateControls();
    }
-   this.SPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_SP + " to the readout value if selected, otherwise set to " +
+   this.SPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_SP + " to the histogram readout value if selected, otherwise set to " +
             stretchParameters.default_SP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.SPControl.resetButton.onClick = function()
    {
@@ -916,7 +851,7 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.LP);
       this.dialog.updateControls();
    }
-   this.LPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_LP + " to the readout value if selected, otherwise set to " +
+   this.LPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_LP + " to the histogram readout value if selected, otherwise set to " +
             stretchParameters.default_LP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.LPControl.resetButton.onClick = function()
    {
@@ -962,7 +897,7 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.HP);
       this.dialog.updateControls();
    }
-   this.HPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_HP + " to the readout value if selected, otherwise set to " +
+   this.HPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_HP + " to the histogram readout value if selected, otherwise set to " +
             stretchParameters.default_HP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
    this.HPControl.resetButton.onClick = function()
    {
@@ -995,10 +930,18 @@ function DialogGHSMain() {
       if (stretchParameters.Inv) stretchParameters.BP = Math.min(0.0, value);
       this.dialog.updateControls();
    }
-   this.BPControl.resetButton.toolTip = "<p>Reset pre-stretch black point to zero.</p>";
+   this.BPControl.resetButton.toolTip = "<p>Reset black point to the histogram readout value if selected, otherwise set to zero.</p>";
    this.BPControl.resetButton.onClick = function()
    {
-      stretchParameters.BP = 0.0;
+      if (this.dialog.stretchGraph.clickLevel < 0.0)
+      {
+         stretchParameters.BP = stretchParameters.default_BP;
+      }
+      else
+      {
+         let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
+         stretchParameters.BP = Math.min(stretchParameters.WP - q, this.dialog.stretchGraph.clickLevel);
+      }
       this.dialog.updateControls();
    }
 
@@ -1061,10 +1004,18 @@ function DialogGHSMain() {
       if (stretchParameters.Inv) stretchParameters.WP = Math.max(1.0, value);
       this.dialog.updateControls();
    }
-   this.WPControl.resetButton.toolTip = "<p>Reset white point to 1.0.</p>";
+   this.WPControl.resetButton.toolTip = "<p>Reset white point to the histogram readout value if selected, otherwise set to 1.0.</p>";
    this.WPControl.resetButton.onClick = function()
    {
-      stretchParameters.WP = 1.0;
+      if (this.dialog.stretchGraph.clickLevel < 0.0)
+      {
+         stretchParameters.WP = stretchParameters.default_WP;
+      }
+      else
+      {
+         let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
+         stretchParameters.WP = Math.max(stretchParameters.BP + q, this.dialog.stretchGraph.clickLevel);
+      }
       this.dialog.updateControls();
    }
 
@@ -1313,7 +1264,7 @@ function DialogGHSMain() {
       this.viewList.hasFocus = true;
       processEvents();
       // store the parameters
-      stretchParameters.save();
+      stretchParameters.save(VERSION);
       // create the script instance
       this.newInstance();
    }
@@ -1327,6 +1278,7 @@ function DialogGHSMain() {
 
       this.newImageIdEdit.end();
       this.viewList.hasFocus = true;
+      this.enabled = false;
       processEvents();
 
       let timerWasRunning = this.previewTimer.isRunning;
@@ -1344,9 +1296,14 @@ function DialogGHSMain() {
          }
          else
          {
+            // temporarily adjust inversion parameter if transformation is not invertible
+            let storeInv = stretchParameters.Inv
+            if (!stretchParameters.isInvertible()) stretchParameters.Inv = false;
+
             // Let user know what is happening
             Console.show();
-            Console.writeln("Applying stretch with the following parameters:");
+            Console.writeln();
+            Console.writeln("<b>Applying stretch with the following parameters:</b>");
             Console.writeln("Stretch type:                     ", stretchParameters.ST);
             Console.writeln("Stretch name:                     ", stretchParameters.STN());
             Console.writeln("Stretch factor:                   ", stretchParameters.D);
@@ -1356,33 +1313,40 @@ function DialogGHSMain() {
             Console.writeln("Highlight protection point (HP):  ", stretchParameters.HP);
             Console.writeln("Pre-stretch blackpoint (BP):      ", stretchParameters.BP);
             Console.writeln("Pre-stretch whitepoint (WP):      ", stretchParameters.WP);
-            Console.writeln("Invert transformation:            ", stretchParameters.WP);
-            Console.writeln("Linked STF:                       ", stretchParameters.WP);
-            Console.writeln("Stretch channel R:                ", stretchParameters.channelSelector[0]);
-            Console.writeln("Stretch channel G:                ", stretchParameters.channelSelector[1]);
-            Console.writeln("Stretch channel B:                ", stretchParameters.channelSelector[2]);
-            Console.writeln("Stretch channel RGB/K:            ", stretchParameters.channelSelector[3]);
-            Console.writeln("Stretch channel L*:               ", stretchParameters.channelSelector[4]);
-            Console.writeln("Stretch channel Sat:              ", stretchParameters.channelSelector[5]);
-            Console.writeln("Stretch channel Lum:              ", stretchParameters.channelSelector[6]);
+            Console.writeln("Invert transformation:            ", stretchParameters.Inv);
+            Console.writeln("Linked STF:                       ", stretchParameters.linked);
+            Console.writeln("Stretch channel                   ", stretchParameters.getChannelName());
             Console.writeln("Mask id:                          ", this.targetView.window.mask.mainView.id);
             Console.writeln("Mask enabled:                     ", this.targetView.window.maskEnabled);
             Console.writeln("Mask inverted:                    ", this.targetView.window.maskInverted);
+            Console.writeln("Blend image:                      ", stretchParameters.combineViewId);
+            Console.writeln("Blend percentage:                 ", stretchParameters.combinePercent);
+            Console.writeln("Create new image:                 ", stretchParameters.createNewImage);
+            Console.writeln("New image id:                     ", stretchParameters.newImageId);
 
             var newView = ghsStretch.executeOn(this.targetView);
 
             // log stretch
             ghsLog.add(newView.id, longStretchKey(ghsStretch, this.targetView));
 
+            // restore inversion parameter
+            stretchParameters.Inv = storeInv;
+
             // select the new image if that is what the user wants
             if (optionParameters.selectNewImage) this.targetView = newView;
 
             Console.hide();
 
-            this.imagePreview.lastStretchKey = "";
-            this.newImageRefresh();
-            this.updateControls();
-
+            if (this.visible)    //catch impatient user who has closed the dialog without waiting for this to finish!
+            {
+               this.imagePreview.lastStretchKey = "";
+               this.newImageRefresh();
+               this.updateControls();
+            }
+            else
+            {
+               return;
+            }
          }
       }
       else
@@ -1392,6 +1356,7 @@ function DialogGHSMain() {
       }
 
       if (timerWasRunning) this.previewTimer.start();
+      this.enabled = true;
    }
 
    // prepare the cancel button
@@ -1400,7 +1365,7 @@ function DialogGHSMain() {
    this.cancelButton.setScaledFixedSize( 24, 24 );
    this.cancelButton.toolTip = "<p>Close dialog with no action.</p>";
    this.cancelButton.onClick = () => {
-      this.cancel();
+      this.ok();
    }
 
    // prepare the real-time preview button
@@ -1544,21 +1509,19 @@ function DialogGHSMain() {
 
       if (lumCoeffsChanged && (this.targetView.id != ""))
       {
-         let newLumHistData = getLuminanceHistogram(this.targetView, this.getLumCoefficients());
+         let newLumHistData = getLuminanceHistogram(this.targetView, stretchParameters.getLumCoefficients(this.targetView));
          ghsViews.histograms[0][5] = newLumHistData[0];
          ghsViews.histArrays[0][5] = newLumHistData[1];
          ghsViews.cumHistArrays[0][5] = newLumHistData[2];
 
          if (ghsViews.histogramsAvailable(1))
          {
-            newLumHistData = getLuminanceHistogram(ghsViews.getView(1), this.getLumCoefficients());
+            newLumHistData = getLuminanceHistogram(ghsViews.getView(1), stretchParameters.getLumCoefficients(ghsViews.getView(1)));
             ghsViews.histograms[1][5] = newLumHistData[0];
             ghsViews.histArrays[1][5] = newLumHistData[1];
             ghsViews.cumHistArrays[1][5] = newLumHistData[2];
          }
       }
-
-      //if (lumCoeffsChanged || colourClipChanged) this.imagePreview.lastStretchKey = "";
 
       this.imagePreview.lastStretchKey = "";
       if (timerWasRunning) this.previewTimer.start();
@@ -1612,19 +1575,19 @@ this.newImageRefresh = function()
 {
    let timerWasRunning = this.previewTimer.isRunning;
    this.previewTimer.stop();
+   this.enabled = false;
 
-   gc(); //take the opportunity to do a garbage tidy up.
+   Console.show();
+   Console.writeln();
+   Console.writeln("<b>Target view refresh: </b>");
 
    stretchParameters.channelSelector = [false, false, false, true, false, false, false];
-   let histData = calculateHistograms(this.targetView, this.getLumCoefficients());
    this.maskList.updateViews();
 
    if (this.targetView.id != "")
    {
+      Console.writeln("Loading target view: ", this.targetView.id);
       this.targetView.window.currentView = this.targetView;
-      this.histogramData.initParams(histData[2], histData[1]);
-      ghsViews.setView(this.targetView, histData);
-      this.stretchGraph.targetView = this.targetView;
       if (optionParameters.bringToFront) this.targetView.window.bringToFront();
       if (optionParameters.moveTopLeft) this.targetView.window.position = new Point(0,0);
       if (optionParameters.optimalZoom) this.targetView.window.zoomToOptimalFit();
@@ -1639,18 +1602,32 @@ this.newImageRefresh = function()
       {
          this.maskControls.hide();
       }
+
+      Console.writeln("Calculating histogram data");
+      let histData = calculateHistograms(this.targetView, stretchParameters.getLumCoefficients(this.targetView));
+      this.histogramData.initParams(histData[2], histData[1]);
+      ghsViews.setView(this.targetView, histData);
+      this.stretchGraph.targetView = this.targetView;
+
+
+      Console.writeln("Initialising preview");
       this.imagePreview.invalidPreview = true;
       this.imagePreview.setImage(this.targetView);
    }
    else
    {
+      Console.writeln("Clearing target view");
       ghsViews.setView(new View());
+      Console.writeln("Clearing preview");
       this.imagePreview.setImage(new View());
       this.stretchGraph.targetView = new View();
    }
 
+   Console.writeln("Refreshing");
    this.updateControls();
 
+   Console.hide();
+   this.enabled = true;
    if (timerWasRunning) this.previewTimer.start();
 }
 
@@ -1666,6 +1643,12 @@ this.newImageRefresh = function()
       this.stretchGraph.graphRGBHistCol = ghsOP.graphRGBHistCol;
 
       this.stretchGraph.graphLineActive = ghsOP.graphLineActive;
+      this.stretchGraph.graphBlockActive = ghsOP.graphBlockActive;
+
+      let sgh = this.stretchGraphHeight;
+      if (this.stretchGraph.graphBlockActive) sgh = Math.floor(sgh / .9)
+      this.stretchGraph.setMinSize(400, sgh);
+
       this.stretchGraph.graphRef1Active = ghsOP.graphRef1Active;
       this.stretchGraph.graphRef2Active = ghsOP.graphRef2Active;
       this.stretchGraph.graphGridActive = ghsOP.graphGridActive;
@@ -1680,6 +1663,14 @@ this.newImageRefresh = function()
       this.previewTimer.interval = ghsOP.previewDelay;
       this.imagePreview.crossColour = ghsOP.previewCrossColour;
       this.imagePreview.crossActive = ghsOP.previewCrossActive;
+
+      stretchParameters.colourClip = ghsOP.colourClip;
+      stretchParameters.lumCoeffSource = ghsOP.lumCoeffSource;
+      stretchParameters.lumCoefficients = new Array(ghsOP.lumCoefficients[0], ghsOP.lumCoefficients[1], ghsOP.lumCoefficients[2])
+
+      stretchParameters.default_colourClip = ghsOP.colourClip;
+      stretchParameters.default_lumCoeffSource = ghsOP.lumCoeffSource;
+      stretchParameters.default_lumCoefficients = new Array(ghsOP.lumCoefficients[0], ghsOP.lumCoefficients[1], ghsOP.lumCoefficients[2])
 
       let v = this.zoomControl.value;
       this.zoomControl.setValue(Math.min(v, ghsOP.zoomMax));
@@ -1696,6 +1687,7 @@ this.newImageRefresh = function()
    {
       if (!this.suspendUpdating)
       {
+         this.isBusy = true;
          let timerWasRunning = this.previewTimer.isRunning;
          this.previewTimer.stop();
 
@@ -1803,6 +1795,9 @@ this.newImageRefresh = function()
             this.invertMaskCheck.enabled = false;
             this.showMaskCheck.enabled = false;
             this.maskList.enabled = false;
+            this.optShowPreview.enabled = false;
+            this.optShowTarget.enabled = false;
+            this.resetZoomButton.enabled = false;
          }
          else
          {
@@ -1814,10 +1809,13 @@ this.newImageRefresh = function()
                this.HCPControl.enabled = true;}
             this.imageInspectorButton.enabled = true;
             this.histUpdateButton.enabled = true;
-            this.logHistButton.enabled = true
+            this.logHistButton.enabled = true;
             this.invertMaskCheck.enabled = true;
             this.showMaskCheck.enabled = true;
             this.maskList.enabled = true;
+            this.optShowPreview.enabled = true;
+            this.optShowTarget.enabled = true;
+            this.resetZoomButton.enabled = true;
          }
 
          this.viewList.reload();
@@ -1888,6 +1886,17 @@ this.newImageRefresh = function()
          this.selectLCheck.checked = stretchParameters.channelSelector[4];
          this.selectSCheck.checked = stretchParameters.channelSelector[5];
          this.selectLumCheck.checked = stretchParameters.channelSelector[6];
+
+         if (!stretchParameters.isInvertible())
+         {
+            this.inverseTransfCheck.checked = false;
+            this.inverseTransfCheck.enabled = false;
+         }
+         else
+         {
+            this.inverseTransfCheck.checked = stretchParameters.Inv;
+            this.inverseTransfCheck.enabled = true;
+         }
 
          this.newImageCheck.checked = stretchParameters.createNewImage;
          if (stretchParameters.createNewImage) {this.newImageIdEdit.enabled = true;}
@@ -1963,6 +1972,7 @@ this.newImageRefresh = function()
          }
 
          if (timerWasRunning) this.previewTimer.start();
+         this.isBusy = false;
       }
    }
 
