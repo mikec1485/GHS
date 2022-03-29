@@ -41,6 +41,7 @@ function ControlStretchGraph()
    this.channelCount = undefined;
 
    this.suspendGraphUpdating = false;
+   this.isBusy = false;
 
    this.graphHGridCount = 4;
    this.graphVGridCount = 4;
@@ -52,7 +53,6 @@ function ControlStretchGraph()
    this.graphZoomCentre = 0.0;
    this.clickLevel = -1;
    this.logHistogram = false;
-   this.normWRTBase = false;
 
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
@@ -67,6 +67,9 @@ function ControlStretchGraph()
    this.graphRef1Active = true;
    this.graphRef2Active = true;
    this.graphGridActive = true;
+   this.graphBlockActive = true;
+   this.blockHeight = .1;
+
 
    this.getColour = function( ofWhat )
    {
@@ -124,10 +127,14 @@ function ControlStretchGraph()
    this.onPaint = function( x0, y0, x1, y1 )
    {
       if (this.suspendGraphUpdating) return;
+      this.isBusy = true;
 
       this.stretch.recalcIfNeeded(this.targetView);
       let stretchParameters = this.stretch.stretchParameters;
+      let isInvertible = stretchParameters.isInvertible();
       let channels = this.dialog.channels();
+      if (this.graphBlockActive) {this.blockHeight = 0.1;}
+      else {this.blockHeight = 0.0;}
 
       // Graph geometry
       let vDim = this.height;
@@ -185,9 +192,6 @@ function ControlStretchGraph()
 
          for (let c = 0; c < channels.length; ++c)
          {
-            //histPlot[0][c].push(0);
-            //histPlot[1][c].push(0);
-
             let histArrayc = this.views.getHistData(0)[1][channels[c]];
             let cumHistArrayc = this.views.getHistData(0)[2][channels[c]];
 
@@ -197,7 +201,18 @@ function ControlStretchGraph()
                let intH = Math.floor(x * (histRes - 1));
                let fracH = Math.frac(x * (histRes - 1));
                let cumH0 = cumHistArrayc[intH]
-               if (intH < histRes - 1) cumH0 += fracH * histArrayc[intH + 1];
+               if (intH < histRes - 1)
+               {
+                  if (histArrayc[intH + 1] == undefined)
+                  {
+                     Console.writeln("histArrayc[intH + 1] == undefined");
+                     Console.writeln("histArrayc.length: ", histArrayc.length);
+                     Console.writeln("intH: ", intH);
+                     Console.writeln("this.views.getHistData(0)[0][0].resolution: ", this.views.getHistData(0)[0][0].resolution);
+                     Console.writeln("[channels[c]]: ", [channels[c]]);
+                  }
+                  cumH0 += fracH * histArrayc[intH + 1];
+               }
                let cumH1 = 0;
                for (let i = 0; i < stepCount + 1; ++i)
                {
@@ -242,64 +257,75 @@ function ControlStretchGraph()
                }
                else if ((!maskActive) && (stretchParameters.STN() != "Image Blend"))
                {
-                  //calculate an array holding required reversed unstretched values
-                  let unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true);
-                  unstretched.push(unstretched[stepCount - 1]);
-
-                  if ((stretchParameters.STN() == "STF Transformation") && (!stretchParameters.linked))
+                  let chNum = stretchParameters.getChannelNumber();
+                  if (((chNum < 3) && (c == chNum)) || (chNum >2))   //ie if this is a channel we need to stretch
                   {
-                     unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true, channels[c]);
+                     //calculate an array holding required reversed unstretched values
+                     let unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true, channels[c], isInvertible);
                      unstretched.push(unstretched[stepCount - 1]);
-                  }
 
-                  let cumH0 = 0;
-                  let cumH1 = 0;
-                  let x = unstretched[0];
-                  if (x < 0)
-                  {
-                     cumH0 = 0;
-                  }
-                  if (!(x < 0) && !(x > 1))
-                  {
-                     let intH = Math.floor(x * (histRes - 1));
-                     let fracH = Math.frac(x * (histRes - 1));
-                     cumH0 = cumHistArrayc[intH];
-                     if (intH < histRes - 1) cumH0 += fracH * histArrayc[intH + 1];
-                  }
-                  if (x > 1)
-                  {
-                     cumH0 = cumHistArrayc[histRes - 1];
-                  }
-                  for (let i = 0; i < stepCount + 1; ++i)
-                  {
-                     x = unstretched[i + 1];
+                     if ((stretchParameters.STN() == "STF Transformation") && (!stretchParameters.linked))
+                     {
+                        unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true, channels[c], isInvertible);
+                        unstretched.push(unstretched[stepCount - 1]);
+                     }
+
+                     let cumH0 = 0;
+                     let cumH1 = 0;
+                     let x = unstretched[0];
                      if (x < 0)
                      {
-                        cumH1 = 0;
+                        cumH0 = 0;
                      }
                      if (!(x < 0) && !(x > 1))
                      {
                         let intH = Math.floor(x * (histRes - 1));
                         let fracH = Math.frac(x * (histRes - 1));
-                        if (intH < histRes - 1) cumH1 = cumHistArrayc[intH] + fracH * histArrayc[intH + 1];
-                        else cumH1 = cumHistArrayc[intH];
+                        cumH0 = cumHistArrayc[intH];
+                        if (intH < histRes - 1) cumH0 += fracH * histArrayc[intH + 1];
                      }
                      if (x > 1)
                      {
-                        cumH1 = cumHistArrayc[histRes - 1];
+                        cumH0 = cumHistArrayc[histRes - 1];
                      }
-                     histPlot[1][c][i] = Math.abs(cumH1 - cumH0);
-                     cumH0 = cumH1;
+                     for (let i = 0; i < stepCount + 1; ++i)
+                     {
+                        x = unstretched[i + 1];
+                        if (x < 0)
+                        {
+                           cumH1 = 0;
+                        }
+                        if (!(x < 0) && !(x > 1))
+                        {
+                           let intH = Math.floor(x * (histRes - 1));
+                           let fracH = Math.frac(x * (histRes - 1));
+                           if (intH < histRes - 1) cumH1 = cumHistArrayc[intH] + fracH * histArrayc[intH + 1];
+                           else cumH1 = cumHistArrayc[intH];
+                        }
+                        if (x > 1)
+                        {
+                           cumH1 = cumHistArrayc[histRes - 1];
+                        }
+                        histPlot[1][c][i] = Math.abs(cumH1 - cumH0);
+                        cumH0 = cumH1;
+                     }
+                     normStretchFac[c] = Math.maxElem(histPlot[1][c].slice(1, histPlot[1][c].length - 2));
                   }
-                  normStretchFac[c] = Math.maxElem(histPlot[1][c].slice(1, histPlot[1][c].length - 2));
+                  else     // ie if this is a channel that does not need stretching
+                  {
+                     for (let i = 0; i < stepCount + 1; ++i)
+                     {
+                        histPlot[1][c][i] = histPlot[0][c][i];
+                     }
+                     normStretchFac[c] = normFac[c];
+                  }
                }
             }
          }
 
          let maxNormFac =  new Array;
          maxNormFac.push(Math.maxElem(normFac));
-         if (this.normWRTBase) {maxNormFac.push(Math.maxElem(normFac));}
-         else {maxNormFac.push(Math.maxElem(normStretchFac));}
+         maxNormFac.push(Math.maxElem(normStretchFac));
 
          // modify plot arays if user wants a logarithmic plot otherwise just normalise data
          for (let c = 0; c < channels.length; ++c)
@@ -332,7 +358,7 @@ function ControlStretchGraph()
                      for (let i = 0; i < hDim; ++i)
                      {
                         barHeight = vDim * histPlot[H][0][startY + i];
-                        g.drawLine(i, vDim, i, vDim - barHeight);
+                        g.drawLine(i, (1  - this.blockHeight) * vDim, i, (1  - this.blockHeight) * (vDim - barHeight));
                      }
                      g.end();
                   //}
@@ -381,21 +407,33 @@ function ControlStretchGraph()
                      {
                         barHeight[channel] = vDim * histPlot[H][channel][startY + i];
                      }
-                     let includeChannel = new Array;
-                     includeChannel.push((H == 0) || (stretchParameters.channelSelector[0]) || (stretchParameters.channelSelector[3]))
-                     includeChannel.push((H == 0) || (stretchParameters.channelSelector[1]) || (stretchParameters.channelSelector[3]))
-                     includeChannel.push((H == 0) || (stretchParameters.channelSelector[2]) || (stretchParameters.channelSelector[3]))
+                     //let includeChannel = new Array;
+                     //includeChannel.push((H == 0) || (stretchParameters.channelSelector[0]) || (stretchParameters.channelSelector[3]))
+                     //includeChannel.push((H == 0) || (stretchParameters.channelSelector[1]) || (stretchParameters.channelSelector[3]))
+                     //includeChannel.push((H == 0) || (stretchParameters.channelSelector[2]) || (stretchParameters.channelSelector[3]))
 
                      let g = new VectorGraphics(this);
                      g.antialiasing = true;
                      for (let j = 0; j < vDim; ++j)
                      {
                         let plotColour = 0;
-                        plotColour += (barHeight[0] >= j) * includeChannel[0];
-                        plotColour += (barHeight[1] >= j) * 2 * includeChannel[1];
-                        plotColour += (barHeight[2] >= j) * 4 * includeChannel[2];
+                        plotColour += (barHeight[0] >= j) //  * includeChannel[0];
+                        plotColour += (barHeight[1] >= j) * 2 //  * includeChannel[1];
+                        plotColour += (barHeight[2] >= j) * 4 //  * includeChannel[2];
+                        switch (stretchParameters.getChannelNumber())
+                        {
+                           case 0: if (barHeight[0] >= j) plotColour = 1; break;
+                           case 1: if (barHeight[1] >= j) plotColour = 2; break;
+                           case 2: if (barHeight[2] >= j) plotColour = 4; break;
+                           default:
+                        }
+
+                        //if (stretchParameters.channelSelector[0] && (barHeight[0] >= j)) plotColour = 1;
+                        //else if (stretchParameters.channelSelector[1] && (barHeight[1] >= j)) plotColour = 2;
+                        //else if (stretchParameters.channelSelector[2] && (barHeight[2] >= j)) plotColour = 4;
+
                         g.pen = pens[plotColour];
-                        g.drawPoint(i, vDim - j);
+                        g.drawPoint(i, (1  - this.blockHeight) * (vDim - j));
                      }
                      g.end();
                   }
@@ -420,7 +458,7 @@ function ControlStretchGraph()
                      let lastPlotPoint = new Point;
                      for (let i = 0; i < hDim; ++i)
                      {
-                        plotPoint = new Point(i, Math.round(vDim * (1.0 - histPlot[H][0][startY + i])));
+                        plotPoint = new Point(i, Math.round((1 - this.blockHeight) * (vDim * (1.0 - histPlot[H][0][startY + i]))));
                         if (i > 0) g.drawLine(lastPlotPoint, plotPoint);
                         lastPlotPoint = plotPoint;
                      }
@@ -474,7 +512,7 @@ function ControlStretchGraph()
                         let lastPlotPoint = new Point;
                         for (let i = 0; i < hDim; ++i)
                         {
-                           plotPoint = new Point(i, Math.round(vDim * (1.0 - histPlot[H][c][startY + i])));
+                           plotPoint = new Point(i, Math.round((1 - this.blockHeight) * (vDim * (1.0 - histPlot[H][c][startY + i]))));
                            if (i > 0) g.drawLine(lastPlotPoint, plotPoint);
                            lastPlotPoint = plotPoint;
                         }
@@ -498,11 +536,11 @@ function ControlStretchGraph()
          for (let i = 0; i < this.graphHGridCount; ++i)
          {
             let s = i * hGridStep;
-            g.drawLine(s, vDim, s, 0);
+            g.drawLine(s, (1  - this.blockHeight) * vDim, s, 0);
          }
-         for (let i = 0; i < this.graphVGridCount; ++i)
+         for (let i = 0; i < this.graphVGridCount + 1; ++i)
          {
-            let s = i * vGridStep;
+            let s = i * (1  - this.blockHeight) * vGridStep;
             g.drawLine(0, s, hDim, s);
          }
          g.end();
@@ -515,7 +553,7 @@ function ControlStretchGraph()
          let g = new VectorGraphics(this);
          g.antialiasing = true;
          g.pen = new Pen(this.getColour("Reference1"), this.refLineWidth);
-         g.drawLine(0, (1.0 - startX) * vDim, hDim, (1.0 - endX) * vDim);
+         g.drawLine(0, (1.0 - startX) * vDim * (1 - this.blockHeight), hDim, (1.0 - endX) * vDim * (1 - this.blockHeight));
          g.end();
       }
 
@@ -528,14 +566,13 @@ function ControlStretchGraph()
          let clickX = this.clickLevel;
          if ( !(clickX < startX) && !(clickX > endX) )
          {
-            g.drawLine(hDim * (clickX - startX) / (endX - startX), vDim, hDim * (clickX - startX) / (endX - startX), 0);
+            g.drawLine(hDim * (clickX - startX) / (endX - startX), (1 - this.blockHeight) * vDim, hDim * (clickX - startX) / (endX - startX), 0);
          }
          g.end();
       }
 
       // Plot the stretch transformation graph
-
-
+      let stretchValues = new Array();
       if (this.graphLineActive && !(stretchParameters.STN() == "Image Blend"))
       {
          let g = new VectorGraphics(this);
@@ -549,16 +586,16 @@ function ControlStretchGraph()
             {
                if (stretchParameters.channelSelector[c] || stretchParameters.channelSelector[3])
                {
-                  let stretchValues = this.stretch.calculateStretch(startX, stepX, hDim + 1, false, c);
+                  stretchValues = this.stretch.calculateStretch(startX, stepX, hDim + 1, false, c, isInvertible);
                   g.pen = new Pen(colourArray[c], this.graphLineWidth);
                   let xOld = startX;
-                  let yOld = (1 - stretchValues[0]) * vDim;
+                  let yOld = (1 - stretchValues[0]) * vDim * (1 - this.blockHeight);
                   for (let i = 0; i < hDim; ++i)
                   {
                      let x = startX + stepX * (i + 1.0);
                      let xNew = (i + 1);
                      let y = stretchValues[i + 1];
-                     let yNew = (1.0 - y) * vDim;
+                     let yNew = (1.0 - y) * vDim * (1 - this.blockHeight);
                      g.drawLine(xOld, yOld, xNew, yNew);
                      xOld = xNew;
                      yOld = yNew;
@@ -568,21 +605,47 @@ function ControlStretchGraph()
          }
          else
          {
-            let stretchValues = this.stretch.calculateStretch(startX, stepX, hDim + 1);
+            stretchValues = this.stretch.calculateStretch(startX, stepX, hDim + 1, false, 0, isInvertible);
             g.pen = new Pen(this.getColour("Stretch"), this.graphLineWidth);
             let xOld = startX;
-            let yOld = (1 - stretchValues[0]) * vDim;
+            let yOld = (1 - stretchValues[0]) * vDim * (1 - this.blockHeight);
             for (let i = 0; i < hDim; ++i)
             {
                let x = startX + stepX * (i + 1.0);
                let xNew = (i + 1);
                let y = stretchValues[i + 1];
-               let yNew = (1.0 - y) * vDim;
+               let yNew = (1.0 - y) * vDim * (1 - this.blockHeight);
                g.drawLine(xOld, yOld, xNew, yNew);
                xOld = xNew;
                yOld = yNew;
             }
          }
+         g.end();
+      }
+
+      //Draw the stretch block
+      if (this.graphBlockActive && !(stretchParameters.STN() == "Image Blend") &&
+         !((stretchParameters.STN() == "STF Transformation") && (!stretchParameters.linked) && (this.targetView.image.isColor)))
+      {
+         let g = new VectorGraphics(this);
+         g.antialiasing = true;
+
+         for (let i = 0; i < hDim; ++i)
+         {
+            let unstretchGrey = Math.floor(255 * (startX + (i + 1) * stepX));
+            let stretchGrey = Math.floor(255 * stretchValues[i + 1]);
+            let unstretchCol = Color.rgbaColor(unstretchGrey, unstretchGrey, unstretchGrey, 255);
+            let stretchCol = Color.rgbaColor(stretchGrey, stretchGrey, stretchGrey, 255);
+            let x = (i + 1);
+            let y0 = (1.0 - this.blockHeight) * vDim;
+            let y1 = (1.0 - 0.5 * this.blockHeight) * vDim;
+            let y2 = vDim;
+            g.pen = new Pen(stretchCol, 1);
+            g.drawLine(x, y0, x, y1);
+            g.pen = new Pen(unstretchCol, 1);
+            g.drawLine(x, y1, x, y2);
+         }
+
          g.end();
       }
 
@@ -609,7 +672,7 @@ function ControlStretchGraph()
             textRects.push(nextRect);
          }
 
-         let nextY = (this.height - textHeight) / 2;
+         let nextY = (this.height * (1 - this.blockHeight) - textHeight) / 2;
          for (let i = 0; i < textStrings.length; ++i)
          {
             let x0 = 0
@@ -622,6 +685,8 @@ function ControlStretchGraph()
 
          g.end();
       }
+
+      this.isBusy = false;
    }
 
    //----------------------------

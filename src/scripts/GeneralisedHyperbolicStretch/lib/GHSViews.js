@@ -173,8 +173,7 @@ function GHSViews(view){
       this.checkStretchParameters();
       if (this.histograms[i] == undefined)
       {
-         let lumCoeffs = [1/3, 1/3, 1/3];
-         if (this.dialog != undefined) lumCoeffs = this.dialog.getLumCoefficients();
+         let lumCoeffs = this.stretch.stretchParameters.getLumCoefficients(this.getView(i));
          let histData = calculateHistograms(this.getView(i), lumCoeffs);
          this.histograms[i] = histData[2];
          this.histArrays[i] = histData[3];

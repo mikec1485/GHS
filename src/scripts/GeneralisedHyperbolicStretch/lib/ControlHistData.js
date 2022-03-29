@@ -31,7 +31,7 @@ function ControlHistData()
    this.__base__ = Control;
    this.__base__();
 
-   this.resolution = Math.pow2(16);
+   this.resolution = 1 << 16;
    this.histograms = new Array(new Histogram(this.resolution), new Histogram(this.resolution), new Histogram(this.resolution));
    this.channelCount = 1;
 
@@ -122,7 +122,7 @@ function ControlHistData()
          let maxCount = this.histograms[channel].peakCount;
          let maxNormLevel = this.histograms[channel].normalizedPeakLevel;
          let endLevel = histRes - 1;
-         let endNormLevel = 1.0 * endLevel / histRes;
+         let endNormLevel = 1.0 * endLevel / (histRes - 1);
          let endCount = this.histograms[channel].count(endLevel);
 
          setHistTableArray(channel, 1, 1, "0");

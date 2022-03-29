@@ -436,6 +436,38 @@ function DialogOptions(optionParameters) {
    this.stretchColControl.add(this.stretchActive);
    this.stretchColControl.addStretch();
 
+   // create stretch block colour picker control
+   this.stretchBlockLabel = new Label(this);
+   this.stretchBlockLabel.minWidth = minLabelWidth;
+   this.stretchBlockLabel.text = "Stretch visualisation block:";
+   this.stretchBlockLabel.textAlignment = -1;
+   this.stretchBlockList = new ComboBox ( this );
+   this.stretchBlockList.minWidth = minLabelWidth;
+   this.stretchBlockList.addItem("Greyscale");
+   this.stretchBlockList.currentItem = 0;
+   this.stretchBlockList.enabled = false;
+   this.stretchBlockList.toolTip =
+      "<p>Specifies the colour to use for the stretch visualisation block (not currently implemented).</p>";
+   this.stretchBlockList.onItemSelected = function( index )
+   {
+      //optionParameters.stretchBlockCol = this.itemText(index);
+   }
+   this.stretchBlockActive = new CheckBox(this);
+   this.stretchBlockActive.text = "";
+   this.stretchBlockActive.toolTip = "Check box controls whether stretch transformation is plotted";
+   this.stretchBlockActive.checked = optionParameters.graphBlockActive;
+   this.stretchBlockActive.onCheck = function(checked)
+   {
+      optionParameters.graphBlockActive = checked;
+   }
+   this.stretchBlockControl = new HorizontalSizer(this);
+   this.stretchBlockControl.margin = 0;
+   this.stretchBlockControl.spacing = 4;
+   this.stretchBlockControl.add(this.stretchBlockLabel);
+   this.stretchBlockControl.add(this.stretchBlockList);
+   this.stretchBlockControl.add(this.stretchBlockActive);
+   this.stretchBlockControl.addStretch();
+
    // create "neutral stretch line" colour picker control
    this.ref1ColLabel = new Label(this);
    this.ref1ColLabel.minWidth = minLabelWidth;
@@ -753,6 +785,7 @@ function DialogOptions(optionParameters) {
       this.backColList.currentItem = this.backColList.findItem(optionParameters.graphBackCol);
       this.gridActive.checked = optionParameters.graphGridActive;
       this.stretchActive.checked = optionParameters.graphLineActive;
+      this.stretchBlockActive.checked = optionParameters.graphBlockActive;
       this.ref1Active.checked = optionParameters.graphRef1Active;
       this.ref2Active.checked = optionParameters.graphRef2Active;
       this.clipList.currentItem = this.clipList.findItem(optionParameters.colourClip);
@@ -821,6 +854,8 @@ function DialogOptions(optionParameters) {
    this.colourPicker.add(this.histTypeControl);
    this.colourPicker.addSpacing(2 * layoutSpacing);
    this.colourPicker.add(this.stretchColControl);
+   this.colourPicker.addSpacing(layoutSpacing);
+   this.colourPicker.add(this.stretchBlockControl);
    this.colourPicker.addSpacing(layoutSpacing);
    this.colourPicker.add(this.gridColControl);
    this.colourPicker.addSpacing(layoutSpacing);

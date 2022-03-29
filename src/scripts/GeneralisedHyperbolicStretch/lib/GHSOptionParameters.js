@@ -51,6 +51,7 @@ function GHSOptionParameters() {
    this.graphGridCol = "Mid grey";
    this.graphBackCol = "Dark grey";
    this.graphLineActive = true;
+   this.graphBlockActive = true;
    this.graphRef1Active = true;
    this.graphRef2Active = true;
    this.graphGridActive = true;
@@ -93,6 +94,7 @@ function GHSOptionParameters() {
       returnValue.graphRGBHistCol.push(this.graphRGBHistCol[1]);
 
       returnValue.graphLineActive = this.graphLineActive;
+      returnValue.graphBlockActive = this.graphBlockActive;
       returnValue.graphRef1Active = this.graphRef1Active;
       returnValue.graphRef2Active = this.graphRef2Active;
       returnValue.graphGridActive = this.graphGridActive;
@@ -135,6 +137,7 @@ function GHSOptionParameters() {
       this.graphRGBHistCol = ghsOP.graphRGBHistCol;
 
       this.graphLineActive = ghsOP.graphLineActive;
+      this.graphBlockActive = ghsOP.graphBlockActive;
       this.graphRef1Active = ghsOP.graphRef1Active;
       this.graphRef2Active = ghsOP.graphRef2Active;
       this.graphGridActive = ghsOP.graphGridActive;
@@ -188,6 +191,7 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/graphGridCol", 13, this.graphGridCol);
       Settings.write(KEYPREFIX + "/graphBackCol", 13, this.graphBackCol);
       Settings.write(KEYPREFIX + "/graphLineActive", 0, this.graphLineActive);
+      Settings.write(KEYPREFIX + "/graphBlockActive", 0, this.graphBlockActive);
       Settings.write(KEYPREFIX + "/graphRef1Active", 0, this.graphRef1Active);
       Settings.write(KEYPREFIX + "/graphRef2Active", 0, this.graphRef2Active);
       Settings.write(KEYPREFIX + "/graphGridActive", 0, this.graphGridActive);
@@ -255,6 +259,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.graphBackCol = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphLineActive", 0);
       if (Settings.lastReadOK) this.graphLineActive = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/graphBlockActive", 0);
+      if (Settings.lastReadOK) this.graphBlockActive = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef1Active", 0);
       if (Settings.lastReadOK) this.graphRef1Active = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef2Active", 0);

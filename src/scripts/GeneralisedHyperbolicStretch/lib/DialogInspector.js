@@ -535,14 +535,22 @@ function DialogInspector(ghsViews) {
             bValue[0] = ghsViews.getView(0).image.sample(imageX, imageY, 2);
             this.dialog.readoutData[0] = [rValue[0], gValue[0], bValue[0]];
 
-            rValue[1] = ghsViews.stretch.calculateStretch(rValue[0]);
-            gValue[1] = ghsViews.stretch.calculateStretch(gValue[0]);
-            bValue[1] = ghsViews.stretch.calculateStretch(bValue[0]);
-            this.dialog.readoutData[1] = [rValue[1], gValue[1], bValue[1]];
+            var rText = "<b>R:    </b>" + rValue[0].toFixed(5);
+            var gText = "<b>G:    </b>" + gValue[0].toFixed(5);
+            var bText = "<b>B:    </b>" + bValue[0].toFixed(5);
 
-            var rText = "<b>R:    </b>" + rValue[0].toFixed(5) + "    " + rValue[1].toFixed(5);
-            var gText = "<b>G:    </b>" + gValue[0].toFixed(5) + "    " + gValue[1].toFixed(5);
-            var bText = "<b>B:    </b>" + bValue[0].toFixed(5) + "    " + bValue[1].toFixed(5);
+            if (ghsViews.views[1] != undefined)
+            {
+               rValue[1] = ghsViews.getView(1).image.sample(imageX, imageY, 0);
+               gValue[1] = ghsViews.getView(1).image.sample(imageX, imageY, 1);
+               bValue[1] = ghsViews.getView(1).image.sample(imageX, imageY, 2);
+               this.dialog.readoutData[1] = [rValue[1], gValue[1], bValue[1]];
+
+               rText += "    " + rValue[1].toFixed(5);
+               gText += "    " + gValue[1].toFixed(5);
+               bText += "    " + bValue[1].toFixed(5);
+            }
+
             roText += rText + "<br>" + gText + "<br>" + bText;
          }
          else
@@ -552,10 +560,16 @@ function DialogInspector(ghsViews) {
             kValue[0] = ghsViews.getView(0).image.sample(imageX, imageY, 0);
             this.dialog.readoutData[0] = [kValue[0], 0, 0];
 
-            kValue[1] = ghsViews.stretch.calculateStretch(kValue[0]);
-            this.dialog.readoutData[1] = [kValue[1], 0, 0];
+            var kText = "<b>K:    </b>" + kValue[0].toFixed(5);
 
-            var kText = "<b>K:    </b>" + kValue[0].toFixed(5) + "    " + kValue[1].toFixed(5);
+            if (ghsViews.views[1] != undefined)
+            {
+               kValue[1] = ghsViews.getView(1).image.sample(imageX, imageY, 0);
+               this.dialog.readoutData[1] = [kValue[1], 0, 0];
+
+               kText += "    " + kValue[1].toFixed(5);
+            }
+
             roText += kText;
          }
          this.dialog.readout.text = roText;
