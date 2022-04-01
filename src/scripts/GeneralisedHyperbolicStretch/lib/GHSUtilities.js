@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.1
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -347,16 +347,16 @@ function getLuminanceHistogram(view, lumCoefficients)
 
    let rgbws = view.window.rgbWorkingSpace;
    let g = rgbws.gamma;
-   let rgbg = rgbws.rgbGamma;
+   let sRgbG = rgbws.srgbGamma;
    let Y = rgbws.Y;
    let x = rgbws.x;
    let y = rgbws.y;
 
    let newG = 1;
-   let newRgbG = false;
+   let newSrgbG = false;
    let newY = lumCoefficients;
 
-   let newRgbws = new RGBColorSystem(newG, newRgbG, newY, x, y);
+   let newRgbws = new RGBColorSystem(newG, newSrgbG, newY, x, y);
    view.window.rgbWorkingSpace = newRgbws;
 
    let cs = view.image.colorSpace
