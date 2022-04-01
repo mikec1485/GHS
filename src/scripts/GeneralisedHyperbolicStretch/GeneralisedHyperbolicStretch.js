@@ -20,8 +20,9 @@
  * by Pleiades Astrophoto and its contributors (https://pixinsight.com/).
  *
  * Version history
- * 1.0   2021-12-09 first release
- * 2.0   yyyy-mm-dd
+ * 1.0   2021-12-09 first release v1
+ * 2.0   2022-03-06 first release v2
+ * 2.1   yyyy-mm-dd
  *
  *
  ****************************************************************************
@@ -50,7 +51,7 @@ known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.0.1"
+#define VERSION "2.1.0"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>
