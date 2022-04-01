@@ -4,7 +4,7 @@
  *
  * LOG OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.1
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *

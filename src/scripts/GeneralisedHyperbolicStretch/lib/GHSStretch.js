@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.1
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -1170,10 +1170,10 @@ function GHSStretch()
          {
             expr3 = "x = " + lR + " * $T[0] + " + lG + " * $T[1] + " + lB + " * $T[2]";
             expr3 += "; y = " + stretch[0];
-            expr3 += "; max = maxsample($T)";
-            expr3 += "; adj = max(1, (y * max) / x)"
+            expr3 += "; m = maxsample($T)";
+            expr3 += "; adj = max(1, (y * m) / x)"
             expr3 += "; iif(x == 0, 0, (y / x) * $T / adj)";
-            symb = "y, max, adj, " + stretch[1];
+            symb = "y, m, adj, " + stretch[1];
          }
          else
          {
@@ -1199,15 +1199,14 @@ function GHSStretch()
          {
             newImageId = getNewName("ghsImage");
          }
-         let img = view.image;
-         var newWindow = new ImageWindow( img.width, img.height, img.numberOfChannels, img.bitsPerSample, img.isReal, img.isColor, newImageId);
+         let newView = this.applyPixelMath(view, ["", "", "", "$T", ""], newImageId, false, PixelMath.prototype.SameAsTarget);
          this.stretchParameters.save();
-         newWindow.mainView.beginProcess()
-         newWindow.mainView.image.apply(wkgView.image);
-         newWindow.mainView.endProcess();
-         if (showNewImage) {newWindow.show();}
-         else {newWindow.hide();}
-         var returnView = newWindow.mainView;
+         newView.beginProcess()
+         newView.image.apply(wkgView.image);
+         newView.endProcess();
+         if (showNewImage) {newView.window.show();}
+         else {newView.window.hide();}
+         var returnView = newView;
       }
       else
       {
@@ -1246,6 +1245,7 @@ function GHSStretch()
       if (stretchExpression[4] != undefined)
       {
          P.symbols = stretchExpression[4];
+         Console.writeln(P.symbols);
       }
 
       if (newImageId == "")
@@ -1281,7 +1281,10 @@ function GHSStretch()
 
       if (P.executeOn(view))
       {
-         if (P.createNewImage) {return View.viewById(P.newImageId);}
+         if (P.createNewImage)
+         {
+            return View.viewById(P.newImageId);
+         }
          else
          {
             return view;

@@ -4,7 +4,7 @@
  *
  * STRETCH PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.1
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -345,12 +345,12 @@ function GHSStretchParameters() {
       Parameters.set("linked",this.linked);
       Parameters.set("combineViewId", this.combineViewId);
       Parameters.set("combinePercent", this.combinePercent);
-      Parameters.set("Inv",(this.Inv && this.isInvertible()));
+      Parameters.set("invert",(this.Inv && this.isInvertible()));
 
       let cx = 3;
       for (let i = 0; i < 7; ++i) {if (this.channelSelector[i]) cx = i;}
 
-      Parameters.set("CX",cx);
+      Parameters.set("channelNumber",cx);
       Parameters.set("createNewImage",this.createNewImage);
       Parameters.set("newImageId",this.newImageId);
       Parameters.set("colourClip", this.colourClip);
@@ -374,10 +374,10 @@ function GHSStretchParameters() {
       if (Parameters.has("linked")) this.linked = Parameters.getBoolean("linked");
       if (Parameters.has("combineViewId")) this.combineViewId = Parameters.getString("combineViewId");
       if (Parameters.has("combinePercent")) this.combinePercent = Parameters.getReal("combinePercent");
-      if (Parameters.has("Inv")) this.Inv = Parameters.getBoolean("Inv");
+      if (Parameters.has("invert")) this.Inv = Parameters.getBoolean("invert");
 
       let cx = 3;
-      if (Parameters.has("CX")) cx = Parameters.getInteger("CX");
+      if (Parameters.has("channelNumber")) cx = Parameters.getInteger("channelNumber");
       for (let i = 0; i < 7; ++i)
       {
          if (cx == i) this.channelSelector[i] = true;
