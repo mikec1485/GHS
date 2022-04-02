@@ -20,9 +20,9 @@
  * by Pleiades Astrophoto and its contributors (https://pixinsight.com/).
  *
  * Version history
- * 1.0   2021-12-09 first release v1
- * 2.0   2022-03-06 first release v2
- * 2.1   yyyy-mm-dd
+ * 1.0     2021-12-09 first release v1
+ * 2.0.0   2022-03-06 first release v2
+ * 2.1.0   2022-04-02
  *
  *
  ****************************************************************************
@@ -46,7 +46,7 @@
 #feature-id    GeneralisedHyperbolicStretch : Utilities > GeneralisedHyperbolicStretch
 
 #feature-info  This script provides an environment within which to define, appraise and apply \
-a variety of different stretches to an image.  The stretches include a family of stretches \
+a variety of different stretches to an image.  The stretches include a family of equations \
 known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022 Mike Cranfield.
 
@@ -111,7 +111,7 @@ function main() {
 /*******************************************************************************
  * Direct context
  *******************************************************************************/
-   jsAutoGC = true;  //Let PJSR handle automatic garbage collection - small performance hit is worth it as there could be lots of garbage produced by this script!
+   jsAutoGC = true;  // let PJSR handle automatic garbage collection - small performance hit is worth it as there could be lots of garbage produced by this script!
    let dialog = new DialogGHSMain();
    let dialogReturn = dialog.execute();
 
