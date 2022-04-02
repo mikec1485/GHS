@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -54,14 +54,12 @@ function GHSStretch()
 
    this.stretchParameters = new GHSStretchParameters();
 
-   var messageSent = false;
-
    var a1, b1, a2, b2, c2, d2, e2, a3, b3, c3, d3, e3, a4, b4;
 
    var stfArray = new Array;
    var stfIsColour = false;
 
-   this.dialog = undefined;
+   this.isBusy = false;
 
    var lastStretchKey = "";
 
@@ -75,13 +73,7 @@ function GHSStretch()
       if (this.needsRecalc()) this.calculateVariables(view);
    }
 
-   this.setStretchParameters = function( stretchParameters )
-   {
-      this.stretchParameters = stretchParameters;
-      if (this.needsRecalc()) {this.calcVars();}
-   }
-
-   this.calculateStretch = function(x, stepx, stepCount, invert = false, channel = 0)
+   this.calculateStretch = function(x, stepx, stepCount, invert = false, channel = 0, isInvertible = true)
    {
       let runMode = "array";
       if (stepx == undefined)
@@ -92,6 +84,11 @@ function GHSStretch()
       }
 
       let spInv = this.stretchParameters.Inv;
+      //--------------------------------------------------------------------------------------
+      //If the transformation defined by stretch parameters is not invertible set Inv to false|
+      //--------------------------------------------------------------------------------------
+      if (!isInvertible) spInv = false;
+
       if (invert != undefined)
       {
          if (invert) {spInv = !spInv;}
@@ -510,6 +507,11 @@ function GHSStretch()
       let SPT = SP;
       let HPT = HP;
 
+      //--------------------------------------------------------------------------------------
+      //If the transformation defined by stretch parameters is not invertible set Inv to false|
+      //--------------------------------------------------------------------------------------
+      if (!this.stretchParameters.isInvertible()) Inv = false;
+
       let exp1 = "";  // Will hold PixelMath expression if x < LP
       let exp2 = "";  // Will hold PixelMath expression if x < SP
       let exp3 = "";  // Will hold PixelMath expression if SP <= x <= HP
@@ -546,16 +548,33 @@ function GHSStretch()
       {
          let combineView = View.viewById(this.stretchParameters.combineViewId);
 
-         let expr = ["x", "x"]
-         if (combineView.id != "")
+         if (!Inv)
          {
-            if (view.window.isMaskCompatible(combineView.window))
+            let expr = ["x", "x"]
+            if (combineView.id != "")
             {
-               let p = (this.stretchParameters.combinePercent / 100).toString();
-               expr[0] = "(1 - " + p + ") * " + view.id + " + " + p + " * " + combineView.id;
+               if (view.window.isMaskCompatible(combineView.window))
+               {
+                  let p = (this.stretchParameters.combinePercent / 100).toString();
+                  expr[0] = "(1 - " + p + ") * " + view.id + " + " + p + " * " + combineView.id;
+               }
             }
+            return expr;
          }
-         return expr;
+         else
+         {
+            let expr = ["x", "x"]
+            if (combineView.id != "")
+            {
+               if (view.window.isMaskCompatible(combineView.window))
+               {
+                  let p = (this.stretchParameters.combinePercent / 100).toString();
+                  if (p == 1) {exp[0] = view.id;}  //shouldn't actually get here as this would mean the transformation is not invertible
+                  else {expr[0] = "(" + view.id + " - " + p + " * " + combineView.id + ")/(1 - " + p + ")";}
+               }
+            }
+            return expr;
+         }
       }
 
       //------------------------------------------
@@ -594,7 +613,7 @@ function GHSStretch()
             //this section of code is included as it is used
             //where BP <= 0 and WP >= 1, if these conditions are met the function is
             //invertable.
-            xStr = "BP+x*(WP-BP)";
+            xStr = "range(BP+x*(WP-BP), 0, 1)";
             vStr = "x";
             vStr += ", BP = " + BP.toString();
             vStr += ", WP = " + WP.toString();
@@ -1041,10 +1060,30 @@ function GHSStretch()
 
    this.executeOn = function(view, showNewImage = true)
    {
+      this.isBusy = true;
       this.calculateVariables(view);
 
-      let wkgView = new View();
+      let checkValid = this.stretchParameters.validate(view);
+      if (checkValid != "")
+      {
+         Console.criticalln(checkValid);
+         return view;
+      }
+
       let wkgViewId = getNewName("_ghs_temp");
+      let img = view.image;
+      var wkgViewWindow = new ImageWindow( img.width, img.height, img.numberOfChannels, img.bitsPerSample, img.isReal, img.isColor, wkgViewId);
+      wkgViewWindow.hide();
+      wkgViewWindow.maskEnabled = view.window.maskEnabled;
+      wkgViewWindow.maskInverted = view.window.maskInverted;
+      wkgViewWindow.mask = view.window.mask;
+      wkgViewWindow.rgbWorkingSpace = new RGBColorSystem(view.window.rgbWorkingSpace);
+
+      let wkgView = wkgViewWindow.mainView;
+      wkgView.beginProcess(UndoFlag_NoSwapFile)
+      wkgView.image.apply(img);
+      wkgView.endProcess();
+
 
       if (this.stretchParameters.channelSelector[0] || this.stretchParameters.channelSelector[1] || this.stretchParameters.channelSelector[2]){
       // build stretch expression
@@ -1055,7 +1094,7 @@ function GHSStretch()
          let stretch = this.getPMExpression(c, view);
          expr[c] = "x = $T;" + stretch[0];
          expr[4] = stretch[1];
-         wkgView = this.applyPixelMath(view, expr, wkgViewId, false);}
+         wkgView = this.applyPixelMath(wkgView, expr, "", false);}
 
       if (this.stretchParameters.channelSelector[3]){
          // build stretch expression
@@ -1069,7 +1108,7 @@ function GHSStretch()
          }
          else {expr[3] = "x = $T;" + stretch[0];}
          expr[4] = stretch[1];
-         wkgView = this.applyPixelMath(view, expr, wkgViewId, false);}
+         wkgView = this.applyPixelMath(wkgView, expr, "", false);}
 
       if (this.stretchParameters.channelSelector[4]){   //Lightness stretch (like CT)
          // stretch the luminance channel
@@ -1084,7 +1123,6 @@ function GHSStretch()
          let CCLab = new ChannelCombination;
          CCLab.colorSpace = ChannelCombination.prototype.CIELab;
          CCLab.channels = [[true, lumViewId], [false, ""], [false, ""]];
-         wkgView = this.applyPixelMath(view, ["", "", "", "$T", ""], wkgViewId, false);
          CCLab.executeOn(wkgView);
          // close temporary views
          lumView.window.forceClose();}
@@ -1104,8 +1142,9 @@ function GHSStretch()
          expr3 += "; iif(max == min, $T, max * (1 - s * (max - $T) / (max - min)));";
 
          let symb = "max, min, s, " + stretch[1];
+         Console.writeln(symb);
 
-         wkgView = this.applyPixelMath(view, ["", "", "", expr3, symb], wkgViewId, false);
+         wkgView = this.applyPixelMath(wkgView, ["", "", "", expr3, symb], "", false);
 
          let ChComb = new ChannelCombination;
          ChComb.colorSpace = ChannelCombination.prototype.CIELab;
@@ -1120,22 +1159,21 @@ function GHSStretch()
 
          let stretch = this.getPMExpression();
 
-         let lumCoefficients = [1/3, 1/3, 1/3];
-         if (this.dialog != undefined) lumCoefficients = this.dialog.getLumCoefficients();
+         let lumCoefficients = this.stretchParameters.getLumCoefficients(view);
          let lR = lumCoefficients[0].toString();
          let lG = lumCoefficients[1].toString();
          let lB = lumCoefficients[2].toString();
 
          let expr3 = "";
          let symb = "";
-         if (this.dialog.optionParameters.colourClip == "Rescale")
+         if (this.stretchParameters.colourClip == "Rescale")
          {
             expr3 = "x = " + lR + " * $T[0] + " + lG + " * $T[1] + " + lB + " * $T[2]";
             expr3 += "; y = " + stretch[0];
-            expr3 += "; max = maxsample($T)";
-            expr3 += "; adj = max(1, (y * max) / x)"
+            expr3 += "; m = maxsample($T)";
+            expr3 += "; adj = max(1, (y * m) / x)"
             expr3 += "; iif(x == 0, 0, (y / x) * $T / adj)";
-            symb = "y, max, adj, " + stretch[1];
+            symb = "y, m, adj, " + stretch[1];
          }
          else
          {
@@ -1145,14 +1183,10 @@ function GHSStretch()
             symb = "y, " + stretch[1];
          }
 
-         wkgView = this.applyPixelMath(view, ["", "", "", expr3, symb], wkgViewId, false);
+         wkgView = this.applyPixelMath(wkgView, ["", "", "", expr3, symb], "", false);
       }
 
-      //check if masking is required
-      let maskingRequired = false;
-      if (view.window.maskEnabled && (view.window.mask.mainView.id != "")) maskingRequired = true;
-
-      //generate new view id if required
+      //generate new view if required
       if (this.stretchParameters.createNewImage)
       {
          var newImageId = "";
@@ -1165,41 +1199,26 @@ function GHSStretch()
          {
             newImageId = getNewName("ghsImage");
          }
+         let newView = this.applyPixelMath(view, ["", "", "", "$T", ""], newImageId, false, PixelMath.prototype.SameAsTarget);
+         this.stretchParameters.save();
+         newView.beginProcess()
+         newView.image.apply(wkgView.image);
+         newView.endProcess();
+         if (showNewImage) {newView.window.show();}
+         else {newView.window.hide();}
+         var returnView = newView;
       }
-
-      //generate the appropriate masking pixelmath if required
-      if (maskingRequired)
+      else
       {
-         let maskId = view.window.mask.mainView.id;
-         var maskExpr = ["", "", "", "", ""];
-         maskExpr[3] = maskId + "*" + wkgViewId + "+(1-" + maskId + ")*" + view.id;
-         if (view.window.maskInverted) maskExpr[3] = maskId + "*" + view.id + "+(1-" + maskId + ")*" + wkgViewId;
+         this.stretchParameters.save();
+         view.beginProcess()
+         view.image.apply(wkgView.image);
+         view.endProcess();
+         var returnView = view;
       }
-
-      //generate the return view
-      if (maskingRequired && this.stretchParameters.createNewImage)
-      {
-         var returnView = this.applyPixelMath(wkgView, maskExpr, newImageId, false, PixelMath.prototype.SameAsTarget);
-      }
-
-      if (maskingRequired && !this.stretchParameters.createNewImage)
-      {
-         var returnView = this.applyPixelMath(view, maskExpr, "", true, PixelMath.prototype.SameAsTarget);
-      }
-
-      if (!maskingRequired && this.stretchParameters.createNewImage)
-      {
-         var returnView = this.applyPixelMath(wkgView, ["", "", "", "$T", ""], newImageId, false, PixelMath.prototype.SameAsTarget);
-      }
-
-      if (!maskingRequired && !this.stretchParameters.createNewImage)
-      {
-         var returnView = this.applyPixelMath(view, ["", "", "", wkgViewId, ""], "", true, PixelMath.prototype.SameAsTarget);
-      }
-
-      if (showNewImage) returnView.window.show();
 
       wkgView.window.forceClose();
+      this.isBusy = false;
       return returnView;
    }
 
@@ -1226,6 +1245,7 @@ function GHSStretch()
       if (stretchExpression[4] != undefined)
       {
          P.symbols = stretchExpression[4];
+         Console.writeln(P.symbols);
       }
 
       if (newImageId == "")
@@ -1245,7 +1265,7 @@ function GHSStretch()
       P.generateOutput = true;
       P.singleThreaded = false;
       P.optimization = true;
-      P.use64BitWorkingImage = false;
+      P.use64BitWorkingImage = true;
       P.rescale = false;
       P.rescaleLower = 0;
       P.rescaleUpper = 1;
@@ -1261,7 +1281,10 @@ function GHSStretch()
 
       if (P.executeOn(view))
       {
-         if (P.createNewImage) {return View.viewById(P.newImageId);}
+         if (P.createNewImage)
+         {
+            return View.viewById(P.newImageId);
+         }
          else
          {
             return view;

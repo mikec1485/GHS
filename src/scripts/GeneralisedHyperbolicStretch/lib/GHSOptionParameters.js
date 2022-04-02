@@ -4,7 +4,7 @@
  *
  * OPTION PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -40,6 +40,7 @@ function GHSOptionParameters() {
    this.selectNewImage = true;
    this.saveLogCheck = true;
    this.startupRTP = true;
+   this.zoomMax = 200;
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
    this.graphHistType = new Array("Draw", "Fill");
@@ -50,6 +51,7 @@ function GHSOptionParameters() {
    this.graphGridCol = "Mid grey";
    this.graphBackCol = "Dark grey";
    this.graphLineActive = true;
+   this.graphBlockActive = true;
    this.graphRef1Active = true;
    this.graphRef2Active = true;
    this.graphGridActive = true;
@@ -57,6 +59,7 @@ function GHSOptionParameters() {
    this.previewHeight = 600;
    this.previewDelay = .2;
    this.previewCrossColour = "Yellow";
+   this.previewCrossActive = true;
    this.colourClip = "Clip";     // can be "Clip" or "Rescale"
    this.lumCoeffSource = "Default"; // can be "Default", "Image", or "Manual"
    this.lumCoefficients = [1, 1, 1];
@@ -72,24 +75,26 @@ function GHSOptionParameters() {
       returnValue.selectNewImage = this.selectNewImage;
       returnValue.saveLogCheck = this.saveLogCheck;
       returnValue.startupRTP = this.startupRTP;
+      returnValue.zoomMax = this.zoomMax;
 
       returnValue.graphHistActive = new Array();
       returnValue.graphHistActive.push(this.graphHistActive[0]);
       returnValue.graphHistActive.push(this.graphHistActive[1]);
 
-      returnValue.graphHistCol = new Array("Light grey", "Mid grey");
+      returnValue.graphHistCol = new Array();
       returnValue.graphHistCol.push(this.graphHistCol[0]);
       returnValue.graphHistCol.push(this.graphHistCol[1]);
 
-      returnValue.graphHistType = new Array("Draw", "Fill");
+      returnValue.graphHistType = new Array();
       returnValue.graphHistType.push(this.graphHistType[0]);
       returnValue.graphHistType.push(this.graphHistType[1]);
 
-      returnValue.graphRGBHistCol = new Array("Light","Mid");
+      returnValue.graphRGBHistCol = new Array();
       returnValue.graphRGBHistCol.push(this.graphRGBHistCol[0]);
       returnValue.graphRGBHistCol.push(this.graphRGBHistCol[1]);
 
       returnValue.graphLineActive = this.graphLineActive;
+      returnValue.graphBlockActive = this.graphBlockActive;
       returnValue.graphRef1Active = this.graphRef1Active;
       returnValue.graphRef2Active = this.graphRef2Active;
       returnValue.graphGridActive = this.graphGridActive;
@@ -104,6 +109,7 @@ function GHSOptionParameters() {
       returnValue.previewHeight = this.previewHeight;
       returnValue.previewDelay = this.previewDelay;
       returnValue.previewCrossColour = this.previewCrossColour;
+      returnValue.previewCrossActive = this.previewCrossActive;
 
       returnValue.colourClip = this.colourClip;
       returnValue.lumCoeffSource = this.lumCoeffSource;
@@ -123,6 +129,7 @@ function GHSOptionParameters() {
       this.selectNewImage = ghsOP.selectNewImage;
       this.saveLogCheck = ghsOP.saveLogCheck;
       this.startupRTP = ghsOP.startupRTP;
+      this.zoomMax = ghsOP.zoomMax;
 
       this.graphHistActive = ghsOP.graphHistActive;
       this.graphHistCol = ghsOP.graphHistCol;
@@ -130,6 +137,7 @@ function GHSOptionParameters() {
       this.graphRGBHistCol = ghsOP.graphRGBHistCol;
 
       this.graphLineActive = ghsOP.graphLineActive;
+      this.graphBlockActive = ghsOP.graphBlockActive;
       this.graphRef1Active = ghsOP.graphRef1Active;
       this.graphRef2Active = ghsOP.graphRef2Active;
       this.graphGridActive = ghsOP.graphGridActive;
@@ -144,6 +152,7 @@ function GHSOptionParameters() {
       this.previewHeight = ghsOP.previewHeight;
       this.previewDelay = ghsOP.previewDelay;
       this.previewCrossColour = ghsOP.previewCrossColour;
+      this.previewCrossActive = ghsOP.previewCrossActive;
 
       this.colourClip = ghsOP.colourClip;
       this.lumCoeffSource = ghsOP.lumCoeffSource;
@@ -182,12 +191,16 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/graphGridCol", 13, this.graphGridCol);
       Settings.write(KEYPREFIX + "/graphBackCol", 13, this.graphBackCol);
       Settings.write(KEYPREFIX + "/graphLineActive", 0, this.graphLineActive);
+      Settings.write(KEYPREFIX + "/graphBlockActive", 0, this.graphBlockActive);
       Settings.write(KEYPREFIX + "/graphRef1Active", 0, this.graphRef1Active);
       Settings.write(KEYPREFIX + "/graphRef2Active", 0, this.graphRef2Active);
       Settings.write(KEYPREFIX + "/graphGridActive", 0, this.graphGridActive);
       Settings.write(KEYPREFIX + "/previewWidth", 5, this.previewWidth);
       Settings.write(KEYPREFIX + "/previewHeight", 5, this.previewHeight);
       Settings.write(KEYPREFIX + "/previewDelay", 9, this.previewDelay);
+      Settings.write(KEYPREFIX + "/zoomMax", 5, this.zoomMax);
+      Settings.write(KEYPREFIX + "/previewCrossColour", 13, this.previewCrossColour);
+      Settings.write(KEYPREFIX + "/previewCrossActive", 0, this.previewCrossActive);
       Settings.write(KEYPREFIX + "/lumCoeffSource", 13, this.lumCoeffSource);
       Settings.write(KEYPREFIX + "/colourClip", 13, this.colourClip);
       Settings.write(KEYPREFIX + "/lumCoefficients0", 9, this.lumCoefficients[0]);
@@ -246,6 +259,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.graphBackCol = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphLineActive", 0);
       if (Settings.lastReadOK) this.graphLineActive = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/graphBlockActive", 0);
+      if (Settings.lastReadOK) this.graphBlockActive = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef1Active", 0);
       if (Settings.lastReadOK) this.graphRef1Active = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef2Active", 0);
@@ -258,6 +273,12 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.previewHeight = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewDelay", 9);
       if (Settings.lastReadOK) this.previewDelay = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/zoomMax", 5);
+      if (Settings.lastReadOK) this.zoomMax = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/previewCrossColour", 13);
+      if (Settings.lastReadOK) this.previewCrossColour = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/previewCrossActive", 0);
+      if (Settings.lastReadOK) this.previewCrossActive = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/lumCoeffSource", 13);
       if (Settings.lastReadOK) this.lumCoeffSource = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/colourClip", 13);

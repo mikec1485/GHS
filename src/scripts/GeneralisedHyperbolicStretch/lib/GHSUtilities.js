@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -277,9 +277,9 @@ function generatePixelMathAutoSTF(view, linked = false)
 
 function calculateHistograms(view, lumCoefficients)
 {
-   let resolution = Math.pow2(16);
+   let resolution = 1 << 16;
    let channelCount = 1;
-   let histograms = [new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16)), new Histogram(Math.pow2(16))];
+   let histograms = [new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution), new Histogram(resolution)];
    let histArrays = [new Array(), new Array(), new Array(), new Array(), new Array(), new Array()];
    let cumHistArrays = [new Array(), new Array(), new Array(), new Array(), new Array(), new Array()];
 
@@ -347,23 +347,23 @@ function getLuminanceHistogram(view, lumCoefficients)
 
    let rgbws = view.window.rgbWorkingSpace;
    let g = rgbws.gamma;
-   let rgbg = rgbws.rgbGamma;
+   let sRgbG = rgbws.srgbGamma;
    let Y = rgbws.Y;
    let x = rgbws.x;
    let y = rgbws.y;
 
    let newG = 1;
-   let newRgbG = false;
+   let newSrgbG = false;
    let newY = lumCoefficients;
 
-   let newRgbws = new RGBColorSystem(newG, newRgbG, newY, x, y);
+   let newRgbws = new RGBColorSystem(newG, newSrgbG, newY, x, y);
    view.window.rgbWorkingSpace = newRgbws;
 
    let cs = view.image.colorSpace
    view.image.colorSpace = ColorSpace_CIEXYZ;
    view.image.selectedChannel = 1;
 
-   let resolution = Math.pow2(16);
+   let resolution = 1 << 16;
    let histogram = new Histogram(resolution);
    histogram.generate(view.image);
 

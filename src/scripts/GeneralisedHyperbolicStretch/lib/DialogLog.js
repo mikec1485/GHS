@@ -4,7 +4,7 @@
  *
  * LOG DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *

@@ -4,7 +4,7 @@
  *
  * PREVIEW CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -53,8 +53,9 @@ function ControlPreview()
    this.invalidPreview = false;
    this.maskEnabled = false;
    this.maskInverted = false;
-   this.stretching = false;
+   this.isBusy = false;
    this.crossColour = 0xffffff00;
+   this.crossActive = true;
 
    this.dragging = false;
    this.dragFrom = new Point();
@@ -126,17 +127,29 @@ function ControlPreview()
 
    this.stretchPreview = function()
    {
-      //if (this.stretching) return;
-      this.stretching = true;
+      //if (this.isBusy) return;
+      this.isBusy = true;
 
       if (this.invalidPreview) {this.repaint();}
       processEvents();
+
+      let currentKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
+      if (currentKey == this.lastStretchKey)
+      {
+         this.invalidPreview = false;
+         this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
+         this.repaint();
+         processEvents();
+         this.isBusy = false;
+         return;
+      }
 
       this.previewImage = new Image(this.originalImage);
 
       if (this.originalImage.isEmpty)
       {
          this.lastStretchKey = "";
+         this.isBusy = false;
          return;
       }
 
@@ -148,6 +161,8 @@ function ControlPreview()
       let A2 = new Float32Array( this.previewImage.numberOfPixels );
       let orgA = new Float32Array( this.previewImage.numberOfPixels );
       let M = new Float32Array( this.originalMask.numberOfPixels );
+
+      let isInvertible = this.stretch.stretchParameters.isInvertible();
 
       if (this.stretch.stretchParameters.STN() == "Image Blend")        // Image blend
       {
@@ -174,19 +189,35 @@ function ControlPreview()
                   if (this.stretch.stretchParameters.channelSelector[c] || this.stretch.stretchParameters.channelSelector[3])
                   {
                      this.previewImage.getSamples( A, new Rect, c );
-                     combineImage.getSamples( A1, new Rect, c );
+                     if (combineImage.isColor) {combineImage.getSamples( A1, new Rect, c );}
+                     else {combineImage.getSamples( A1, new Rect, 0 );}
 
                      if (!this.maskEnabled)
                      {
-                        for (let i = 0; i < A.length; ++i) A[i] = (1 - p) * A[i] + p * A1[i];
+                        if (isInvertible && this.stretch.stretchParameters.Inv)
+                        {
+                           for (let i = 0; i < A.length; ++i) A[i] = (A[i] - p * A1[i]) / (1 - p);
+                        }
+                        else
+                        {
+                           for (let i = 0; i < A.length; ++i) A[i] = (1 - p) * A[i] + p * A1[i];
+                        }
                      }
                      else
                      {
                         if (this.originalMask.isColor) {this.originalMask.getSamples( M, new Rect, c );}
                         else {this.originalMask.getSamples( M, new Rect, 0 );}
 
-                        if (!this.maskInverted) {for (let i = 0; i < A.length; ++i) {A[i] = (1 - p * M[i]) * A[i] + p * M[i] * A1[i];}}
-                        else {for (let i = 0; i < A.length; ++i) {A[i] = (1 - p * (1 - M[i])) * A[i] + p * (1 - M[i]) * A1[i];}}
+                        if (isInvertible && this.stretch.stretchParameters.Inv)
+                        {
+                           if (!this.maskInverted) {for (let i = 0; i < A.length; ++i) {A[i] = (A[i] - p * M[i] * A1[i]) / (1  - p * M[i]);}}
+                           else {for (let i = 0; i < A.length; ++i) {A[i] = (A[i] - (p * (1 - M[i])) * A1[i]) / (1 - p * (1 - M[i]));}}
+                        }
+                        else
+                        {
+                           if (!this.maskInverted) {for (let i = 0; i < A.length; ++i) {A[i] = (1 - p * M[i]) * A[i] + p * M[i] * A1[i];}}
+                           else {for (let i = 0; i < A.length; ++i) {A[i] = (1 - p * (1 - M[i])) * A[i] + p * (1 - M[i]) * A1[i];}}
+                        }
                      }
                      this.previewImage.setSamples( A, new Rect, c );
                   }
@@ -210,7 +241,7 @@ function ControlPreview()
             {
                for ( let i = 0; i < A.length; ++i )
                {
-                  A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, channel);
+                  A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, channel, isInvertible);
                }
             }
             else
@@ -222,14 +253,14 @@ function ControlPreview()
                {
                   for ( let i = 0; i < A.length; ++i )
                   {
-                     A[i] = M[i] * A[i] + (1 - M[i]) * this.stretch.calculateStretch(A[i], undefined,undefined, false, channel);
+                     A[i] = M[i] * A[i] + (1 - M[i]) * this.stretch.calculateStretch(A[i], undefined,undefined, false, channel, isInvertible);
                   }
                }
                else
                {
                   for ( let i = 0; i < A.length; ++i )
                   {
-                     A[i] = (1 - M[i]) * A[i] + M[i] * this.stretch.calculateStretch(A[i], undefined,undefined, false, channel);
+                     A[i] = (1 - M[i]) * A[i] + M[i] * this.stretch.calculateStretch(A[i], undefined,undefined, false, channel, isInvertible);
                   }
                }
             }
@@ -250,7 +281,7 @@ function ControlPreview()
 
                   for ( let i = 0; i < A.length; ++i )
                   {
-                     A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, c);
+                     A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, c, isInvertible);
                   }
 
                   this.previewImage.setSamples( A, new Rect, c );
@@ -269,11 +300,11 @@ function ControlPreview()
 
                   if (this.maskInverted)
                   {
-                     for ( let i = 0; i < A.length; ++i ) {A[i] = M[i] * A[i] + (1 - M[i]) * this.stretch.calculateStretch(A[i], undefined,undefined, false, c);}
+                     for ( let i = 0; i < A.length; ++i ) {A[i] = M[i] * A[i] + (1 - M[i]) * this.stretch.calculateStretch(A[i], undefined,undefined, false, c, isInvertible);}
                   }
                   else
                   {
-                     for ( let i = 0; i < A.length; ++i ) {A[i] = (1 - M[i]) * A[i] + M[i] * this.stretch.calculateStretch(A[i], undefined,undefined, false, c);}
+                     for ( let i = 0; i < A.length; ++i ) {A[i] = (1 - M[i]) * A[i] + M[i] * this.stretch.calculateStretch(A[i], undefined,undefined, false, c, isInvertible);}
                   }
 
                   this.previewImage.setSamples( A, new Rect, c );
@@ -294,7 +325,7 @@ function ControlPreview()
             lstImg.getSamples( A, new Rect, 0 );
             for ( let i = 0; i < A.length; ++i )
             {
-               A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, 0);
+               A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, 0, isInvertible);
             }
             lstImg.setSamples( A, new Rect, 0 );
             this.previewImage.setLightness(lstImg);
@@ -312,7 +343,7 @@ function ControlPreview()
             this.previewImage.getSamples( A, new Rect, 1 );
             for ( let i = 0; i < A.length; ++i )
             {
-               A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, 0);
+               A[i] = this.stretch.calculateStretch(A[i], undefined,undefined, false, 0, isInvertible);
             }
             this.previewImage.setSamples( A, new Rect, 1 );
             this.previewImage.colorSpace = cs;
@@ -323,7 +354,7 @@ function ControlPreview()
 
          if (this.stretch.stretchParameters.channelSelector[6])                //Luminance (as arcsinh)
          {
-            let lumCoefficients = this.dialog.getLumCoefficients();
+            let lumCoefficients = this.stretch.stretchParameters.getLumCoefficients(this.targetView);
             let lR = lumCoefficients[0];
             let lG = lumCoefficients[1];
             let lB = lumCoefficients[2];
@@ -332,12 +363,12 @@ function ControlPreview()
             this.previewImage.getSamples( A1, new Rect, 1 );
             this.previewImage.getSamples( A2, new Rect, 2 );
 
-            if (this.dialog.optionParameters.colourClip == "Rescale")
+            if (this.stretch.stretchParameters.colourClip == "Rescale")
             {
                for ( let i = 0; i < A.length; ++i )
                {
                   let l = lR * A[i] + lG * A1[i] + lB * A2[i];
-                  let sl = this.stretch.calculateStretch(l, undefined, undefined, false, 0);
+                  let sl = this.stretch.calculateStretch(l, undefined, undefined, false, 0, isInvertible);
 
                   if (l == 0)
                   {
@@ -365,7 +396,7 @@ function ControlPreview()
                for ( let i = 0; i < A.length; ++i )
                {
                   let l = lR * A[i] + lG * A1[i] + lB * A2[i];
-                  let sl = this.stretch.calculateStretch(l, undefined, undefined, false, 0);
+                  let sl = this.stretch.calculateStretch(l, undefined, undefined, false, 0, isInvertible);
 
                   if (l == 0)
                   {
@@ -410,11 +441,10 @@ function ControlPreview()
       orgImg.free();
 
       this.invalidPreview = false;
-      this.lastStretchKey = longStretchKey(this.stretch, this.targetView);
+      this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
       this.repaint();
       processEvents();
-      this.stretching = false;
-
+      this.isBusy = false;
    }
 
    this.viewPort = function()
@@ -452,7 +482,7 @@ function ControlPreview()
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
          g.drawBitmap(this.viewPort().leftTop, bmp);
          bmp.clear();
-         if (this.invalidPreview)
+         if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
             g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
@@ -465,7 +495,7 @@ function ControlPreview()
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
          g.drawBitmap(this.viewPort().leftTop, bmp);
          bmp.clear();
-         if (this.invalidPreview)
+         if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
             g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
@@ -480,8 +510,18 @@ function ControlPreview()
 
    this.onMousePress = function(x, y, button, buttonState, modifiers)
    {
-      this.dragging = true;
-      this.dragFrom = new Point(x, y);
+      if (modifiers == KeyModifier_Control)
+      {
+         let showPreview = !this.dialog.optShowPreview.checked;
+         this.dialog.optShowPreview.checked = showPreview;
+         this.dialog.optShowTarget.checked = !showPreview;
+      }
+      else
+      {
+         this.dragging = true;
+         this.dragFrom = new Point(x, y);
+         this.dragTo = new Point(x, y);
+      }
    }
 
    this.onMouseMove = function(x, y, buttonState, modifiers)
@@ -497,7 +537,7 @@ function ControlPreview()
    {
       if (this.dragging)
       {
-         if (this.dragRect().area > 0)
+         if (this.dragRect().area > 1)
          {
             let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
             let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
@@ -521,11 +561,11 @@ function ControlPreview()
             }
             this.stretchPreview();
          }
-
+         this.dragFrom = new Point();
+         this.dragTo = new Point();
          this.dragging = false;
          this.repaint();
       }
    }
-
 }
 ControlPreview.prototype = new Frame;

@@ -4,7 +4,7 @@
  *
  * OPTIONS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -181,7 +181,7 @@ function DialogOptions(optionParameters) {
    this.previewHeightSizer.addStretch();
    this.previewHeightSizer.add(this.previewHeightNum);
 
-   // create preview height input
+   // create preview delay input
    this.previewDelayNum = new NumericEdit( this );
    this.previewDelayNum.label.text = "Preview delay";
    this.previewDelayNum.setRange(.1, 2);
@@ -198,6 +198,25 @@ function DialogOptions(optionParameters) {
    this.previewDelaySizer = new HorizontalSizer();
    this.previewDelaySizer.addStretch();
    this.previewDelaySizer.add(this.previewDelayNum);
+
+   // create zoom maximum input
+   this.zoomMaxNum = new NumericEdit( this );
+   this.zoomMaxNum.label.text = "Zoom maximum";
+   this.zoomMaxNum.setRange(100, 10000);
+   this.zoomMaxNum.setPrecision(0);
+   this.zoomMaxNum.setValue(optionParameters.zoomMax);
+   this.zoomMaxNum.toolTip =
+         "<p>Specify the maximim zoom ratio for the histogram zoom slider. " +
+         "<b>Warning</b>: If this is set too high the sliders will become sticky when high zoom levels are selected. " +
+         "The optimum setting will depend upon the processing power of your computer. " +
+         "Note also that at higher zoom levels the histogram can become blocky in appearance.</p>";
+   this.zoomMaxNum.onValueUpdated = function( value )
+   {
+      optionParameters.zoomMax = value;
+   }
+   this.zoomMaxSizer = new HorizontalSizer();
+   this.zoomMaxSizer.addStretch();
+   this.zoomMaxSizer.add(this.zoomMaxNum);
 
    //create histogram picker headings graphHistActive
    this.histHeadLabel1 = new Label(this);
@@ -417,6 +436,38 @@ function DialogOptions(optionParameters) {
    this.stretchColControl.add(this.stretchActive);
    this.stretchColControl.addStretch();
 
+   // create stretch block colour picker control
+   this.stretchBlockLabel = new Label(this);
+   this.stretchBlockLabel.minWidth = minLabelWidth;
+   this.stretchBlockLabel.text = "Stretch visualisation block:";
+   this.stretchBlockLabel.textAlignment = -1;
+   this.stretchBlockList = new ComboBox ( this );
+   this.stretchBlockList.minWidth = minLabelWidth;
+   this.stretchBlockList.addItem("Greyscale");
+   this.stretchBlockList.currentItem = 0;
+   this.stretchBlockList.enabled = false;
+   this.stretchBlockList.toolTip =
+      "<p>Specifies the colour to use for the stretch visualisation block (not currently implemented).</p>";
+   this.stretchBlockList.onItemSelected = function( index )
+   {
+      //optionParameters.stretchBlockCol = this.itemText(index);
+   }
+   this.stretchBlockActive = new CheckBox(this);
+   this.stretchBlockActive.text = "";
+   this.stretchBlockActive.toolTip = "Check box controls whether stretch transformation is plotted";
+   this.stretchBlockActive.checked = optionParameters.graphBlockActive;
+   this.stretchBlockActive.onCheck = function(checked)
+   {
+      optionParameters.graphBlockActive = checked;
+   }
+   this.stretchBlockControl = new HorizontalSizer(this);
+   this.stretchBlockControl.margin = 0;
+   this.stretchBlockControl.spacing = 4;
+   this.stretchBlockControl.add(this.stretchBlockLabel);
+   this.stretchBlockControl.add(this.stretchBlockList);
+   this.stretchBlockControl.add(this.stretchBlockActive);
+   this.stretchBlockControl.addStretch();
+
    // create "neutral stretch line" colour picker control
    this.ref1ColLabel = new Label(this);
    this.ref1ColLabel.minWidth = minLabelWidth;
@@ -532,11 +583,22 @@ function DialogOptions(optionParameters) {
       optionParameters.previewCrossColour = this.itemText(index);
    }
 
+   this.previewCrossActive = new CheckBox(this);
+   this.previewCrossActive.text = "";
+   this.previewCrossActive.toolTip = "Check box controls whether a cross is drawn across the preview when " +
+      "the transformation has been changed and the preview is waiting for things to stabilise before updating.";
+   this.previewCrossActive.checked = optionParameters.previewCrossActive;
+   this.previewCrossActive.onCheck = function(checked)
+   {
+      optionParameters.previewCrossActive = checked;
+   }
+
    this.previewCrossControl = new HorizontalSizer(this);
    this.previewCrossControl.margin = 0;
    this.previewCrossControl.spacing = 4;
    this.previewCrossControl.add(this.previewCrossLabel);
    this.previewCrossControl.add(this.previewCrossList);
+   this.previewCrossControl.add(this.previewCrossActive);
    this.previewCrossControl.addStretch();
 
    // create Luminance R coefficient input
@@ -602,9 +664,9 @@ function DialogOptions(optionParameters) {
    this.lumSourceList.currentItem = this.lumSourceList.findItem(optionParameters.lumCoeffSource);
    this.lumSourceList.toolTip =
       "<p>Where to take the luminance coefficients from for a colour stretch. " +
-      "Default: will use equal weights for each channel. " +
-      "Image: will take the luminance coefficients from the target image rgb working space. " +
-      "Manual: will allow you to specify the coefficients to use below.</p>";
+      "<b>Default</b>: will use equal weights for each channel. " +
+      "<b>Image</b>: will take the luminance coefficients from the target image rgb working space. " +
+      "<b>Manual</b>: will allow you to specify the coefficients to use below.</p>";
    this.lumSourceList.onItemSelected = function( index )
    {
       optionParameters.lumCoeffSource = this.itemText(index);
@@ -702,10 +764,12 @@ function DialogOptions(optionParameters) {
       this.selectNewImage.checked = optionParameters.selectNewImage;
       this.saveLogCheck.checked = optionParameters.saveLogCheck;
       this.startupRTPCheck.checked = optionParameters.startupRTP;
+      this.zoomMaxNum.setValue(optionParameters.zoomMax);
       this.previewWidthNum.setValue(optionParameters.previewWidth);
       this.previewHeightNum.setValue(optionParameters.previewHeight);
       this.previewDelayNum.setValue(optionParameters.previewDelay);
       this.previewCrossList.currentItem = this.previewCrossList.findItem(optionParameters.previewCrossColour);
+      this.previewCrossActive.checked = optionParameters.previewCrossActive;
       this.histUnstretchActive.checked = optionParameters.graphHistActive[0];
       this.histStretchActive.checked = optionParameters.graphHistActive[1];
       this.histColList.currentItem = this.histColList.findItem(optionParameters.graphHistCol[0]);
@@ -721,6 +785,7 @@ function DialogOptions(optionParameters) {
       this.backColList.currentItem = this.backColList.findItem(optionParameters.graphBackCol);
       this.gridActive.checked = optionParameters.graphGridActive;
       this.stretchActive.checked = optionParameters.graphLineActive;
+      this.stretchBlockActive.checked = optionParameters.graphBlockActive;
       this.ref1Active.checked = optionParameters.graphRef1Active;
       this.ref2Active.checked = optionParameters.graphRef2Active;
       this.clipList.currentItem = this.clipList.findItem(optionParameters.colourClip);
@@ -761,6 +826,8 @@ function DialogOptions(optionParameters) {
    this.optionPickerRight.add(this.previewHeightSizer);
    this.optionPickerRight.addSpacing(layoutSpacing);
    this.optionPickerRight.add(this.previewDelaySizer);
+   this.optionPickerRight.addSpacing(4 * layoutSpacing);
+   this.optionPickerRight.add(this.zoomMaxSizer);
 
    this.optionPicker = new HorizontalSizer( this );
    this.optionPicker.margin = 32;
@@ -787,6 +854,8 @@ function DialogOptions(optionParameters) {
    this.colourPicker.add(this.histTypeControl);
    this.colourPicker.addSpacing(2 * layoutSpacing);
    this.colourPicker.add(this.stretchColControl);
+   this.colourPicker.addSpacing(layoutSpacing);
+   this.colourPicker.add(this.stretchBlockControl);
    this.colourPicker.addSpacing(layoutSpacing);
    this.colourPicker.add(this.gridColControl);
    this.colourPicker.addSpacing(layoutSpacing);

@@ -4,7 +4,7 @@
  *
  * STRETCH PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.0.0
+ * Version 2.1.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -30,6 +30,7 @@ function GHSStretchParameters() {
    this.__base__ = Object;
    this.__base__();
 
+   this.version = "";
    this.ST = 0;      // stretch type
    this.D = 0.0;     // stretch amount
    this.b = 0.0;     // stretch intensity
@@ -45,6 +46,9 @@ function GHSStretchParameters() {
    this.channelSelector = new Array(false, false, false, true, false, false, false); // which channels to stretch
    this.createNewImage = false;
    this.newImageId = "<Auto>";
+   this.colourClip = "Clip";     // can be "Clip" or "Rescale"
+   this.lumCoeffSource = "Default"; // can be "Default", "Image", or "Manual"
+   this.lumCoefficients = [1, 1, 1];
 
    // define a function (and its inverse) to convert the D parameter to a value for use in calculations
    this.convFacD = 1.0;
@@ -64,6 +68,10 @@ function GHSStretchParameters() {
    this.default_combineViewId = "";
    this.default_combinePercent = 0;
    this.default_Inv = false;
+   this.default_colourClip = "Clip";     // can be "Clip" or "Rescale"
+   this.default_lumCoeffSource = "Default"; // can be "Default", "Image", or "Manual"
+   this.default_lumCoefficients = [1, 1, 1];
+
 
    // define user friendly names for each parameter
    this.name_ST = "Transformation type (ST)";
@@ -91,6 +99,42 @@ function GHSStretchParameters() {
                         "Image Inversion",
                         "Image Blend",
                         "STF Transformation"];
+
+   this.channelNames = ["Red",
+                        "Green",
+                        "Blue",
+                        "RGB/K",
+                        "Lightness",
+                        "Saturation",
+                        "Colour"];
+
+   this.getChannelNumber = function()
+   {
+      for (let i = 0; i < 7; ++i)
+      {
+         if (this.channelSelector[i]) return i;
+      }
+      return 3;   //catch all RGB/K
+   }
+
+   this.getChannelName = function()
+   {
+      return this.channelNames[this.getChannelNumber()];
+   }
+
+   this.isInvertible = function()
+   {
+      // Certain transformations are not invertible.
+      // This function determines whether the current parameters are invertible.
+      let returnValue = true;
+      let stn = this.STN();
+      // if (this.getChannelNumber() > 3) returnValue = false;
+      if (stn == "Image Inversion") returnValue = false;
+      if (stn == "Image Blend" && (this.combinePercent == 100)) returnValue = false;
+      if (stn == "STF Transformation") returnValue = false;
+      // if (stn == "Linear Stretch") returnValue = false;
+      return returnValue;
+   }
 
    this.getStretchKey = function(includeCNI = false)
    {
@@ -134,13 +178,9 @@ function GHSStretchParameters() {
       }
 
       returnValue += ", Inverse:" + this.Inv.toString();
-      returnValue += ", Red:" + this.channelSelector[0].toString();
-      returnValue += ", Green:" + this.channelSelector[1].toString();
-      returnValue += ", Blue:" + this.channelSelector[2].toString();
-      returnValue += ", RGB/K:" + this.channelSelector[3].toString();
-      returnValue += ", L*:" + this.channelSelector[4].toString();
-      returnValue += ", Sat:" + this.channelSelector[5].toString();
-      returnValue += ", Col:" + this.channelSelector[6].toString();
+      returnValue += ", Channel number:" + this.getChannelNumber().toString();
+      returnValue += ", Channel name:" + this.getChannelName();
+
       if (includeCNI)
       {
          returnValue += ", CreateNewImage:"+ this.createNewImage.toString();
@@ -167,6 +207,99 @@ function GHSStretchParameters() {
       return this.stretchNames[lookupST];
    }
 
+   this.getLumCoefficients = function(view)
+   {
+      let lR = (1 / 3);
+      let lG = (1 / 3);
+      let lB = (1 / 3);
+      if ((this.lumCoeffSource == "Image") && (view != undefined))
+      {
+         if (view.id != "")
+         {
+            let rgbWS = view.window.rgbWorkingSpace;
+            lR = rgbWS.Y[0];
+            lG = rgbWS.Y[1];
+            lB = rgbWS.Y[2];
+         }
+      }
+      if (this.lumCoeffSource == "Manual")
+      {
+         let lRx = this.lumCoefficients[0];
+         let lGx = this.lumCoefficients[1];
+         let lBx = this.lumCoefficients[2];
+         let total = lR + lG + lB;
+         if (total != 0)
+         {
+            lR = lRx / total;
+            lG = lGx / total;
+            lB = lBx / total;
+         }
+      }
+      return [lR, lG, lB];
+   }
+
+   this.validate = function(view)
+   {
+      let returnValue = "";
+
+      if ((this.ST < 0) || (!(this.ST < this.stretchNames.length))) returnValue = "invalid parameter ST = " + this.ST.toString();
+
+      if (view != undefined)
+      {
+         if ((view.image.isGrayscale) && (!(this.channelSelector[3]))) returnValue = "grayscale image can only transform RGB/K channel";
+      }
+
+      if ((this.STN() == "Generalised Hyperbolic Stretch") || (this.STN() == "Histogram Transformation") || (this.STN() == "Arcsinh Stretch"))
+      {
+         if (this.D < 0) returnValue = "invalid parameter D = " + this.D.toString();
+         if ((this.SP < 0) || (this.SP > 1)) returnValue = "invalid parameter SP = " + this.SP.toString();
+         if ((this.LP < 0) || (this.LP > 1)) returnValue = "invalid parameter LP = " + this.LP.toString();
+         if ((this.HP < 0) || (this.HP > 1)) returnValue = "invalid parameter HP = " + this.HP.toString();
+         if (this.LP > this.SP) returnValue = "invalid parameters LP > SP";
+         if (this.SP > this.HP) returnValue = "invalid parameters SP > HP";
+         if (this.Inv && !this.isInvertible()) returnValue = "invalid parameter Inv = true, transformation is not invertible";
+         if ((this.colourClip != "Clip") && (this.colourClip != "Rescale")) returnValue = "invalid parameter colourClip must be Clip or Rescale";
+         if ((this.lumCoeffSource != "Default") && (this.lumCoeffSource != "Image") && (this.lumCoeffSource != "Manual"))
+         {returnValue = "invalid parameter lumCoeffSource must be Default, Image or Manual";}
+         if ((this.lumCoefficients[0] < 0) || (this.lumCoefficients[1] < 0) || (this.lumCoefficients[2] < 0))
+         {returnValue = "invalid parameter lumcoefficients must not be less than zero";}
+         if ((this.lumCoefficients[0] + this.lumCoefficients[1] + this.lumCoefficients[2]) == 0)
+         {returnValue = "invalid parameter lumcoefficients at least one coefficient must be greater than zero";}
+      }
+
+      if (this.STN() == "Linear Stretch")
+      {
+         if (!(this.BP < this.WP)) returnValue = "invalid parameters BP >= WP";
+      }
+
+      if (this.STN() == "Image Blend")
+      {
+         if (view != undefined)
+         {
+            if (this.channelSelector[4] || this.channelSelector[5] || this.channelSelector[6]) returnValue = "image blend only permitted on RGB channels";
+            if ((this.combinePercent < 0) || (this.combinePercent > 100)) returnValue = "invalid combine percentage = " + this.combinePercent.toString() + "%";
+            let combView = View.viewById(this.combineViewId);
+            if (combView.id == "")
+            {
+               returnValue = "combine view not available: " + this.combineViewId;
+            }
+            else
+            {
+               if (!view.window.isMaskCompatible(combView.window)) returnValue = "target view incompatible with combine view: " + this.combineViewId;
+            }
+         }
+      }
+
+      if (this.STN() == "STF Transformation")
+      {
+         if (this.channelSelector[4] || this.channelSelector[5] || this.channelSelector[6]) returnValue = "STF transformation only permitted on RGB channels";
+      }
+
+
+
+      return returnValue
+   }
+
    this.reset = function() {
       this.ST = this.default_ST;
       this.D = this.default_D;
@@ -189,10 +322,18 @@ function GHSStretchParameters() {
       this.channelSelector[6] = false;
       this.createNewImage = false;
       this.newImageId = "<Auto>";
+      this.colourClip = this.default_colourClip;
+      this.lumCoeffSource = this.default_lumCoeffSource;
+      this.lumCoefficients = new Array(this.default_lumCoefficients[0], this.default_lumCoefficients[1], this.default_lumCoefficients[2]);
    }
 
    // stores the current parameter values into the script instance
    this.save = function() {
+      Parameters.clear();
+      Parameters.set("scriptName", "Generalised Hyperbolic Stretch");
+      Parameters.set("version", this.version);
+      Parameters.set("transformationType", this.STN());
+      Parameters.set("channel", this.getChannelName());
       Parameters.set("ST", this.ST);
       Parameters.set("D", this.D);
       Parameters.set("b", this.b);
@@ -204,20 +345,24 @@ function GHSStretchParameters() {
       Parameters.set("linked",this.linked);
       Parameters.set("combineViewId", this.combineViewId);
       Parameters.set("combinePercent", this.combinePercent);
-      Parameters.set("Inv",this.Inv);
-      Parameters.set("C0",this.channelSelector[0]);
-      Parameters.set("C1",this.channelSelector[1]);
-      Parameters.set("C2",this.channelSelector[2]);
-      Parameters.set("C3",this.channelSelector[3]);
-      Parameters.set("C4",this.channelSelector[4]);
-      Parameters.set("C5",this.channelSelector[5]);
-      Parameters.set("C6",this.channelSelector[6]);
+      Parameters.set("invert",(this.Inv && this.isInvertible()));
+
+      let cx = 3;
+      for (let i = 0; i < 7; ++i) {if (this.channelSelector[i]) cx = i;}
+
+      Parameters.set("channelNumber",cx);
       Parameters.set("createNewImage",this.createNewImage);
       Parameters.set("newImageId",this.newImageId);
+      Parameters.set("colourClip", this.colourClip);
+      Parameters.set("lumCoeffSource", this.lumCoeffSource);
+      Parameters.set("lumCoeffR", this.lumCoefficients[0]);
+      Parameters.set("lumCoeffG", this.lumCoefficients[1]);
+      Parameters.set("lumCoeffB", this.lumCoefficients[2]);
    }
 
    // loads the script instance parameters
    this.load = function() {
+      if (Parameters.has("version")) this.version = Parameters.getString("version");
       if (Parameters.has("ST")) this.ST = Parameters.getReal("ST");
       if (Parameters.has("D")) this.D = Parameters.getReal("D");
       if (Parameters.has("b")) this.b = Parameters.getReal("b");
@@ -228,17 +373,24 @@ function GHSStretchParameters() {
       if (Parameters.has("WP")) this.WP = Parameters.getReal("WP");
       if (Parameters.has("linked")) this.linked = Parameters.getBoolean("linked");
       if (Parameters.has("combineViewId")) this.combineViewId = Parameters.getString("combineViewId");
-      if (Parameters.has("combinePercent")) this.combinePercent = Parameters.getBoolean("combinePercent");
-      if (Parameters.has("Inv")) this.Inv = Parameters.getBoolean("Inv");
-      if (Parameters.has("C0")) this.channelSelector[0] = Parameters.getBoolean("C0");
-      if (Parameters.has("C1")) this.channelSelector[1] = Parameters.getBoolean("C1");
-      if (Parameters.has("C2")) this.channelSelector[2] = Parameters.getBoolean("C2");
-      if (Parameters.has("C3")) this.channelSelector[3] = Parameters.getBoolean("C3");
-      if (Parameters.has("C4")) this.channelSelector[4] = Parameters.getBoolean("C4");
-      if (Parameters.has("C5")) this.channelSelector[5] = Parameters.getBoolean("C5");
-      if (Parameters.has("C6")) this.channelSelector[6] = Parameters.getBoolean("C6");
+      if (Parameters.has("combinePercent")) this.combinePercent = Parameters.getReal("combinePercent");
+      if (Parameters.has("invert")) this.Inv = Parameters.getBoolean("invert");
+
+      let cx = 3;
+      if (Parameters.has("channelNumber")) cx = Parameters.getInteger("channelNumber");
+      for (let i = 0; i < 7; ++i)
+      {
+         if (cx == i) this.channelSelector[i] = true;
+         else this.channelSelector[i] = false;
+      }
+
       if (Parameters.has("createNewImage")) this.createNewImage = Parameters.getBoolean("createNewImage");
       if (Parameters.has("newImageId")) this.newImageId = Parameters.getString("newImageId");
+      if (Parameters.has("colourClip")) this.colourClip = Parameters.getString("colourClip");
+      if (Parameters.has("lumCoeffSource")) this.lumCoeffSource = Parameters.getString("lumCoeffSource");
+      if (Parameters.has("lumCoeffR")) this.lumCoefficients[0] = Parameters.getReal("lumCoeffR");
+      if (Parameters.has("lumCoeffG")) this.lumCoefficients[1] = Parameters.getReal("lumCoeffG");
+      if (Parameters.has("lumCoeffB")) this.lumCoefficients[2] = Parameters.getReal("lumCoeffB");
    }
 }
 GHSStretchParameters.prototype = new Object;
