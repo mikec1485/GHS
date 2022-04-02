@@ -1581,11 +1581,11 @@ this.newImageRefresh = function()
    Console.writeln();
    Console.writeln("<b>Target view refresh: </b>");
 
-   stretchParameters.channelSelector = [false, false, false, true, false, false, false];
    this.maskList.updateViews();
 
    if (this.targetView.id != "")
    {
+      if (this.targetView.image.isGrayscale) {stretchParameters.channelSelector = [false, false, false, true, false, false, false];}
       Console.writeln("Loading target view: ", this.targetView.id);
       this.targetView.window.currentView = this.targetView;
       if (optionParameters.bringToFront) this.targetView.window.bringToFront();
@@ -1843,7 +1843,7 @@ this.newImageRefresh = function()
             this.combineError.toolTip = ""
          }
 
-         if (this.targetView.image.isColor)
+         if (this.targetView.image.isColor || (this.targetView.id == ""))
          {
             this.selectRCheck.enabled = true;
             this.selectGCheck.enabled = true;
@@ -1867,7 +1867,6 @@ this.newImageRefresh = function()
                   stretchParameters.channelSelector[6] = false;
                }
             }
-
          }
          else
          {
