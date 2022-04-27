@@ -3,6 +3,8 @@ Generalised Hyperbolic Stretch Version 2.1.0
 
 This script is designed to run within the Pixinsight Javascript Runtime environment.
 
+<b>Note: if you are running Pixinsight version 1.8.9 or earlier you should not include the file GeneralisedHyperbolicStretch.xsgn in your installation.  This file should only be included for versions 1.8.9-1 and later.</b>
+
 The script provides an integrated environment for design, appraisal and application of stretches to astronomical images.  Stretching equations available within the script include: Generalised Hyperbolic Equations; Histogram Transformations; and Arcsinh Stretches. The script also provides graphical presentation of the stretch equations, image histogram and a real-time image preview.  Image statistics are presented to facilitate the design of appropriate stretches.
 
 A comprehensive walkthrough primer is also available as well as direct access from within the script to a dedicated website including video tutorials.
