@@ -4,7 +4,7 @@
  *
  * PREVIEW CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -44,11 +44,25 @@ function ControlPreview()
    }
 
    this.baseImage = new Image();
+   this.baseImageLightness = new Image();
+   this.baseImageHSV = new Image();
+   this.baseImageColLum = new Image();
    this.baseMask = new Image();
    this.originalImage = new Image();
    this.originalMask = new Image();
    this.previewImage = new Image();
    this.imageSelection = new Rect();
+
+   this.readoutControl = undefined;
+
+   this.readoutPoint = new Point();
+   this.readoutData = [[0, 0, 0], [0, 0, 0]];
+   this.showReadout = false;
+
+   this.readoutArea = new Rect();
+   this.readoutSize = 64;
+   this.readoutAreaData = [0, 0, 0 ,0] // mean, median, maximum, minimum
+
    this.showPreview = true;
    this.invalidPreview = false;
    this.maskEnabled = false;
@@ -58,6 +72,7 @@ function ControlPreview()
    this.crossActive = true;
 
    this.dragging = false;
+   this.zooming = false;
    this.dragFrom = new Point();
    this.dragTo = new Point();
 
@@ -79,8 +94,13 @@ function ControlPreview()
 
    this.setImage = function(view)
    {
+      let viewChanged = true;
+      if (view === this.targetView) viewChanged = false;
+
       this.targetView = view;
       this.baseImage = new Image();
+      this.baseImageLightness = new Image();
+      this.baseImageSaturation = new Image();
       this.baseMask = new Image();
       this.maskEnabled = false;
       this.maskInverted = false;
@@ -89,6 +109,39 @@ function ControlPreview()
          this.baseImage.free();
          this.baseImage = new Image(view.image.width, view.image.height, view.image.numberOfChannels,view.image.colorSpace, 32, 1)
          this.baseImage.assign(view.image);
+
+         this.baseImageLightness.free();
+         view.image.getLightness(this.baseImageLightness);
+
+         this.baseImageHSV.free();
+         this.baseImageColLum.free();
+
+         if (this.baseImage.isColor)
+         {
+            this.baseImageHSV = new Image(view.image.width, view.image.height, view.image.numberOfChannels,ColorSpace_HSV, 32, 1)
+            this.baseImageHSV.assign(view.image);
+            this.baseImageHSV.colorSpace = ColorSpace_HSV;
+
+            view.beginProcess(UndoFlag_NoSwapFile);
+
+            let rgbws = view.window.rgbWorkingSpace;
+            let g = rgbws.gamma;
+            let sRgbG = rgbws.srgbGamma;
+            let Y = rgbws.Y;
+            let x = rgbws.x;
+            let y = rgbws.y;
+
+            let newG = 1;
+            let newSrgbG = false;
+            let newY = this.stretch.stretchParameters.getLumCoefficients();
+
+            let newRgbws = new RGBColorSystem(newG, newSrgbG, newY, x, y);
+            view.window.rgbWorkingSpace = newRgbws;
+            view.image.getLuminance(this.baseImageColLum);
+            view.window.rgbWorkingSpace = rgbws;
+
+            view.endProcess();
+         }
 
          if ((view.window.maskEnabled) && (view.window.mask.mainView.id != ""))
          {
@@ -104,6 +157,13 @@ function ControlPreview()
             this.maskEnabled = false;
             this.maskInverted = false;
          }
+      }
+
+      if (viewChanged)
+      {
+         this.readoutPoint = new Point();
+         this.readoutData = [[0, 0, 0], [0, 0, 0]];
+         this.showReadout = false;
       }
 
       this.resetImage();
@@ -125,7 +185,7 @@ function ControlPreview()
       this.stretchPreview();
    }
 
-   this.stretchPreview = function()
+   this.stretchPreview = function(showRO)
    {
       //if (this.isBusy) return;
       this.isBusy = true;
@@ -134,7 +194,7 @@ function ControlPreview()
       processEvents();
 
       let currentKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
-      if (currentKey == this.lastStretchKey)
+      if ((currentKey == this.lastStretchKey) || this.originalImage.isEmpty)
       {
          this.invalidPreview = false;
          this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
@@ -145,13 +205,6 @@ function ControlPreview()
       }
 
       this.previewImage = new Image(this.originalImage);
-
-      if (this.originalImage.isEmpty)
-      {
-         this.lastStretchKey = "";
-         this.isBusy = false;
-         return;
-      }
 
       this.stretch.recalcIfNeeded(this.targetView);
       let orgImg = new Image(this.previewImage);
@@ -440,6 +493,9 @@ function ControlPreview()
 
       orgImg.free();
 
+      if (showRO == undefined) {this.calculateReadout(this.showReadout);}
+      else {this.calculateReadout(showRO);}
+
       this.invalidPreview = false;
       this.lastStretchKey = longStretchKey(this.stretch, this.targetView) + this.imageSelection.toString();
       this.repaint();
@@ -447,8 +503,76 @@ function ControlPreview()
       this.isBusy = false;
    }
 
-   this.viewPort = function()
+   this.calculateReadout = function(showRO)
+   {
+      let minChannel = 0;
+      let maxChannel = 0;
 
+      let img = this.baseImage;
+
+      if (this.stretch.stretchParameters.channelSelector[4])
+      {
+         img = this.baseImageLightness;
+      }
+
+      else if (this.stretch.stretchParameters.channelSelector[5])
+      {
+         img = this.baseImageHSV;
+         minChannel = 1;
+         maxChannel = 1;
+      }
+
+      else if (this.stretch.stretchParameters.channelSelector[6])
+      {
+         img = this.baseImageColLum;
+      }
+
+      else if (this.baseImage.isColor)
+      {
+         switch (this.readoutControl.roDataChannel)
+         {
+            case 0:
+               maxChannel = 2;
+               break;
+            case 2:
+               minChannel = 1;
+               maxChannel = 1;
+               break;
+            case 3:
+               minChannel = 2;
+               maxChannel = 2;
+               break;
+         }
+      }
+
+      if (true)   //(!this.stretch.stretchParameters.channelSelector[6])
+      {
+         this.readoutAreaData[0] = img.mean(this.readoutArea, minChannel, maxChannel);
+         this.readoutAreaData[1] = img.median(this.readoutArea, minChannel, maxChannel);
+         this.readoutAreaData[2] = img.maximum(this.readoutArea, minChannel, maxChannel);
+         this.readoutAreaData[3] = img.minimum(this.readoutArea, minChannel, maxChannel);
+      }
+      else  // colour stretch
+      {
+         let lc = this.stretch.stretchParameters.getLumCoefficients();
+         let means = new Array;
+         for (let c = 0; c < 3; ++c) means.push(this.baseImage.mean(this.readoutArea, c, c));
+         for (let i = 0; i < 4; ++i) this.readoutAreaData[i] = 0;
+         for (let c = 0; c < 3; ++c) this.readoutAreaData[0] += lc[c] * means[c];
+         this.readoutAreaData[0] /= 3;
+      }
+
+      if (showRO != undefined) {this.showReadout = showRO;}
+
+      if (this.readoutControl != undefined)
+      {
+         this.readoutControl.showRO = this.showReadout;
+         this.readoutControl.setReadAreaData(this.readoutArea, this.readoutAreaData);
+         this.readoutControl.update();
+      }
+   }
+
+   this.viewPort = function()
    {
       let imgWidth = this.imageSelection.width;
       let imgHeight = this.imageSelection.height;
@@ -475,35 +599,80 @@ function ControlPreview()
    this.onPaint = function(x0, y0, x1, y1)
    {
       let g = new Graphics(this);
+      let vP = this.viewPort();
 
       if (this.showPreview)
       {
          let bmp = this.previewImage.render(1, false, false)
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
-         g.drawBitmap(this.viewPort().leftTop, bmp);
+         g.drawBitmap(vP.leftTop, bmp);
          bmp.clear();
          if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
-            g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
-            g.drawLine(this.viewPort().rightTop, this.viewPort().leftBottom);
+            g.drawLine(vP.leftTop, vP.rightBottom);
+            g.drawLine(vP.rightTop, vP.leftBottom);
          }
       }
       else
       {
          let bmp = this.originalImage.render(1, false, false)
          if (this.targetView.id != "") this.targetView.window.applyColorTransformation(bmp);
-         g.drawBitmap(this.viewPort().leftTop, bmp);
+         g.drawBitmap(vP.leftTop, bmp);
          bmp.clear();
          if (this.invalidPreview && this.crossActive)
          {
             g.pen = new Pen(getColourCode( this.crossColour ));
-            g.drawLine(this.viewPort().leftTop, this.viewPort().rightBottom);
-            g.drawLine(this.viewPort().rightTop, this.viewPort().leftBottom);
+            g.drawLine(vP.leftTop, vP.rightBottom);
+            g.drawLine(vP.rightTop, vP.leftBottom);
          }
       }
 
-      if (this.dragging) {g.fillRect(this.dragRect(), new Brush(0x20ffffff));}
+      if (this.dragging && this.zooming) {g.fillRect(this.dragRect(), new Brush(0x20ffffff));}
+
+      if ((this.readoutControl != undefined) && this.showReadout)
+      {
+         if (this.readoutControl.showReticle)
+         {
+            let zoom = this.zoomFactor();
+            let cursorSize = 24;
+            let cpX = vP.x0 + zoom * (this.readoutPoint.x - this.imageSelection.x0);
+            let cpY = vP.y0 + zoom * (this.readoutPoint.y - this.imageSelection.y0);
+            let rpX = zoom * (this.readoutPoint.x - this.imageSelection.x0);
+            let rpY = zoom * (this.readoutPoint.y - this.imageSelection.y0);
+
+            let cursorPoint = new Point(cpX, cpY);
+            let cursorRect = new Rect(rpX - cursorSize / 2, rpY - cursorSize / 2, rpX + cursorSize / 2, rpY + cursorSize / 2);
+
+            let roaX0 = Math.round(cpX - zoom * this.readoutSize / 2);
+            let roaY0 = Math.round(cpY - zoom * this.readoutSize / 2);
+            let roaX1 = Math.round(cpX + zoom * this.readoutSize / 2);
+            let roaY1 = Math.round(cpY + zoom * this.readoutSize / 2);
+
+            let roArea = new Rect(roaX0, roaY0, roaX1, roaY1);
+
+            let meanValue = 0;
+            if (this.showPreview && this.previewImage.isGrayscale) meanValue = this.previewImage.mean(cursorRect, 0, 0);
+            if (this.showPreview && this.previewImage.isColor) meanValue = this.previewImage.mean(cursorRect, 0, 2);
+            if (!this.showPreview && this.originalImage.isGrayscale) meanValue = this.originalImage.mean(cursorRect, 0, 0);
+            if (!this.showPreview && this.originalImage.isColor) meanValue = this.originalImage.mean(cursorRect, 0, 2);
+            if (meanValue > 0.7) g.pen = new Pen(0xff000000);
+            else g.pen = new Pen(0xffffffff);
+
+            let P0 = new Point(cpX - cursorSize / 2, cpY);
+            let P1 = new Point(cpX + cursorSize / 2, cpY);
+            g.drawLine(P0, P1);
+
+            let P2 = new Point(cpX, cpY - cursorSize / 2);
+            let P3 = new Point(cpX, cpY + cursorSize / 2);
+            g.drawLine(P2, P3);
+
+            g.drawLine(roArea.leftTop, roArea.rightTop);
+            g.drawLine(roArea.rightTop, roArea.rightBottom);
+            g.drawLine(roArea.rightBottom, roArea.leftBottom);
+            g.drawLine(roArea.leftBottom, roArea.leftTop);
+         }
+      }
 
       g.end()
    }
@@ -518,6 +687,19 @@ function ControlPreview()
       }
       else
       {
+         let viewROP = this.imgToViewPoint(this.readoutPoint);
+         let clickDistance = viewROP.distanceTo(new Point(x, y));
+
+         if (this.showReadout && (clickDistance < 8))
+         {
+            this.zooming = false;
+            this.cursor = new Cursor(28);
+         }
+         else
+         {
+            this.zooming = true;
+         }
+
          this.dragging = true;
          this.dragFrom = new Point(x, y);
          this.dragTo = new Point(x, y);
@@ -529,7 +711,16 @@ function ControlPreview()
       if (this.dragging)
       {
          this.dragTo = new Point(x, y);
-         this.repaint();
+
+         if (this.zooming)
+         {
+            this.repaint();
+         }
+         else
+         {
+            this.readoutPoint = this.viewToImgPoint(this.dragTo);
+            this.setReadout();
+         }
       }
    }
 
@@ -537,17 +728,19 @@ function ControlPreview()
    {
       if (this.dragging)
       {
-         if (this.dragRect().area > 1)
+         if (this.viewPort().area == 0)
          {
-            let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
-            let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
+            this.dragFrom = new Point();
+            this.dragTo = new Point();
+            this.dragging = false;
+            this.cursor = new Cursor(1);
+            this.repaint();
+            return;
+         }
 
-            let nisX0 = isL + this.imageSelection.width * (this.dragRect().left - this.viewPort().left) / this.viewPort().width;
-            let nisY0 = isT + this.imageSelection.height * (this.dragRect().top - this.viewPort().top) / this.viewPort().height;
-            let nisX1 = isL + this.imageSelection.width * (this.dragRect().right - this.viewPort().left) / this.viewPort().width;
-            let nisY1 = isT + this.imageSelection.height * (this.dragRect().bottom - this.viewPort().top) / this.viewPort().height;
-
-            this.imageSelection = new Rect(nisX0, nisY0, nisX1, nisY1);
+         if (this.zooming && (this.dragRect().area > 0))
+         {
+            this.imageSelection = this.viewToImgRect(this.dragRect());
 
             this.originalImage = new Image(this.baseImage);
             this.originalImage.cropTo(this.imageSelection);
@@ -559,13 +752,65 @@ function ControlPreview()
                this.originalMask.cropTo(this.imageSelection);
                this.originalMask.resample(zoomFac);
             }
+            this.dragging = false;
             this.stretchPreview();
          }
+         else
+         {
+            this.readoutPoint = this.viewToImgPoint(this.dragTo);
+            this.showReadout = true;
+            this.setReadout();
+         }
+
          this.dragFrom = new Point();
          this.dragTo = new Point();
          this.dragging = false;
-         this.repaint();
+         this.zooming = false;
+         this.cursor = new Cursor(1);
       }
+   }
+
+   this.setReadout = function(size, roPoint)
+   {
+      if (size != undefined) this.readoutSize = size;
+      if (roPoint != undefined) this.readoutPoint = roPoint;
+      let semiSide = Math.floor(this.readoutSize / 2);
+      let roaX0 = Math.max(0, this.readoutPoint.x - semiSide);
+      let roaY0 = Math.max(0, this.readoutPoint.y - semiSide);
+      let roaX1 = Math.min(this.baseImage.width, this.readoutPoint.x + semiSide + 1);
+      let roaY1 = Math.min(this.baseImage.height, this.readoutPoint.y + semiSide + 1);
+      this.readoutArea = new Rect(roaX0, roaY0, roaX1, roaY1);
+      this.calculateReadout();
+      this.repaint();
+   }
+
+   this.viewToImgRect = function(vRect)
+   {
+      let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
+      let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
+      let nisX0 = isL + this.imageSelection.width * (vRect.left - this.viewPort().left) / this.viewPort().width;
+      let nisY0 = isT + this.imageSelection.height * (vRect.top - this.viewPort().top) / this.viewPort().height;
+      let nisX1 = isL + this.imageSelection.width * (vRect.right - this.viewPort().left) / this.viewPort().width;
+      let nisY1 = isT + this.imageSelection.height * (vRect.bottom - this.viewPort().top) / this.viewPort().height;
+      return new Rect(nisX0, nisY0, nisX1, nisY1);
+   }
+
+   this.viewToImgPoint = function(vPoint)
+   {
+      let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
+      let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
+      let imgX0 = isL + this.imageSelection.width * (vPoint.x - this.viewPort().left) / this.viewPort().width;
+      let imgY0 = isT + this.imageSelection.height * (vPoint.y - this.viewPort().top) / this.viewPort().height;
+      return new Point(imgX0, imgY0);
+   }
+
+   this.imgToViewPoint = function(imgPoint)
+   {
+      let isL = Math.min(this.imageSelection.x0, this.imageSelection.x1);
+      let isT = Math.min(this.imageSelection.y0, this.imageSelection.y1);
+      let viewX0 = this.viewPort().width * (imgPoint.x - isL) / this.imageSelection.width + this.viewPort().left;
+      let viewY0 = this.viewPort().height * (imgPoint.y - isT) / this.imageSelection.height + this.viewPort().top;
+      return new Point(viewX0, viewY0);
    }
 }
 ControlPreview.prototype = new Frame;

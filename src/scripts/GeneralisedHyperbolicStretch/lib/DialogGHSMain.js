@@ -4,7 +4,7 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -31,6 +31,7 @@
 
 #include "ControlHistData.js"
 #include "ControlPreview.js"
+#include "ControlReadout.js"
 #include "ControlStretchGraph.js"
 #include "ControlParamInput.js"
 
@@ -100,7 +101,7 @@ function DialogGHSMain() {
    this.onHide = function()
    {
       this.previewTimer.stop();
-   };
+   }
 
 /*******************************************************************************
  * MAIN DIALOG - Create the graphical display control section
@@ -111,8 +112,7 @@ function DialogGHSMain() {
    //----------------------------------
    this.stretchGraphHeight = 250
    this.stretchGraph = new ControlStretchGraph(this);
-   this.stretchGraph.toolTip = "<b>Click</b> to see readout at that point.  <b>Double click</b> to centre zoom at that point. " +
-         "Transfer readout value to transformation parameters  by clicking reset button alongside relevant slider."
+   this.stretchGraph.toolTip = "<p><b>Click</b> to see readout at that point.  <b>Double click</b> to centre zoom at that point.</p>"
    this.stretchGraph.graphBlockActive = optionParameters.graphBlockActive;
    let sgh = this.stretchGraphHeight;
    if (this.stretchGraph.graphBlockActive) sgh = Math.floor(sgh / .9)
@@ -132,6 +132,14 @@ function DialogGHSMain() {
    this.graphInfo1.minWidth = minLabelWidth;
    this.graphInfo1.readOnly = true;
    this.graphInfo1.useRichText = true;
+
+   this.graphInfo2 = new Label( this )
+   this.graphInfo2.style = Frame.FrameStyle_Box;
+   this.graphInfo2.text = "";
+   this.graphInfo2.minWidth = minLabelWidth;
+   this.graphInfo2.readOnly = true;
+   this.graphInfo2.useRichText = true;
+
    this.graphInfoButton = new ToolButton( this );
    this.graphInfoButton.icon = this.scaledResource(":/icons/clear.png");
    this.graphInfoButton.setScaledFixedSize(24, 24);
@@ -139,6 +147,31 @@ function DialogGHSMain() {
             "<p>Reset graph selection point</p>";
    this.graphInfoButton.onClick = function( checked ) {
       this.dialog.stretchGraph.clickLevel = -1.0;
+      let resetButton = this.dialog.stretchGraph.clickResetButton;
+      if (resetButton != undefined) {resetButton.updateParamValue();}
+      this.dialog.updateControls();
+   }
+
+   this.graphInfoSendButton = new PushButton( this );
+   this.graphInfoSendButton.text = "Send value to SP";
+   this.graphInfoSendButton.toolTip = "<p>Send histogram selection readout to parameters. If Transformation type is " +
+         "Generalised Hyperbolic Stretch, Histogram Transformation or Arcsinh, " +
+         "the value will be sent to SP.  If transformation type is Linear Stretch " +
+         "the value will be sent to BP.</p>"
+   this.graphInfoSendButton.onClick = function( checked ) {
+      if (this.dialog.stretchGraph.clickLevel == -1.0) return;
+      if ((stretchParameters.STN() == "Generalised Hyperbolic Stretch") ||
+         (stretchParameters.STN() == "Histogram Transformation") ||
+         (stretchParameters.STN() == "Arcsinh Stretch"))
+      {
+         //stretchParameters.SP = Math.min(stretchParameters.HP, Math.max(stretchParameters.LP, this.dialog.stretchGraph.clickLevel));
+         stretchParameters.SP = this.dialog.stretchGraph.clickLevel;
+      }
+      if (stretchParameters.STN() == "Linear Stretch")
+      {
+         let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
+         stretchParameters.BP = Math.min(stretchParameters.WP - q, this.dialog.stretchGraph.clickLevel);
+      }
       this.dialog.updateControls();
    }
 
@@ -146,12 +179,15 @@ function DialogGHSMain() {
    this.graphInfoLabels.margin = 0;
    this.graphInfoLabels.spacing = 4;
    this.graphInfoLabels.add(this.graphInfo1);
+   this.graphInfoLabels.add(this.graphInfo2);
 
    this.graphInfoControls = new HorizontalSizer( this )
    this.graphInfoControls.margin = 0;
    this.graphInfoControls.spacing = 4;
    this.graphInfoControls.add(this.graphInfoLabels);
+   this.graphInfoControls.addStretch();
    this.graphInfoControls.add(this.graphInfoButton);
+   this.graphInfoControls.add(this.graphInfoSendButton);
 
 /*******************************************************************************
  * MAIN DIALOG - Create the channel selection checkboxes
@@ -223,7 +259,10 @@ function DialogGHSMain() {
    this.selectSCheck.text = "Sat";
    this.selectSCheck.checked = stretchParameters.channelSelector[5];
    this.selectSCheck.toolTip =
-         "<p><b>Saturation stretch:</b> apply stretch to saturation channel</p>";
+         "<p><b>Saturation stretch:</b> apply stretch to the HSV saturation channel; " +
+         "pixel values are then adjusted to ensure Lightness is the same as in the original image. " +
+         "Note that when this option is selected the chart will show a histogram of saturation values within the image, " +
+         "not intensity values as graphed for all other options.</p>";
    this.selectSCheck.onCheck = function( checked )
    {
       stretchParameters.channelSelector[5] = checked;
@@ -235,9 +274,9 @@ function DialogGHSMain() {
    this.selectLumCheck.text = "Col";
    this.selectLumCheck.checked = stretchParameters.channelSelector[6];
    this.selectLumCheck.toolTip =
-         "<p><b>Colour stretch:</b> checking this will apply a colour stretch.  This is achieved by stretching a Luminance channel.  " +
-         "The RGB coefficients for deriving the luminance are specified in the preferences dialog. " +
-         "Each RGB channel is then stretched by the ratio of the stretched to the unstretched luminance.</p>";
+         "<p><b>Colour stretch:</b> checking this will apply a colour stretch.  This is achieved by stretching a 'pseudo' Luminance channel. " +
+         "The RGB coefficients for deriving this Luminance channel are specified in the preferences dialog (no gamma adjustment is applied). " +
+         "Each RGB channel is then stretched by the ratio of the stretched to the unstretched Luminance.</p>";
    this.selectLumCheck.onCheck = function( checked )
    {
       stretchParameters.channelSelector[6] = checked;
@@ -266,9 +305,11 @@ function DialogGHSMain() {
    }
 
    // prepare the log histogram toggle button
-   this.logHistButton = new ToolButton( this );
-   this.logHistButton.icon = this.scaledResource( ":/icons/chart.png" );
-   this.logHistButton.setScaledFixedSize( 24, 24 );
+   //this.logHistButton = new ToolButton( this );
+   //this.logHistButton.icon = this.scaledResource( ":/icons/chart.png" );
+   //this.logHistButton.setScaledFixedSize( 24, 24 );
+   this.logHistButton = new PushButton( this );
+   this.logHistButton.text = "Log view";
    this.logHistButton.toolTip = "<p>Toggle between displaying standard histogram and log histogram. " +
             "Currently showing standard histogram.</p>";
    this.logHistButton.onClick = () => {
@@ -277,11 +318,13 @@ function DialogGHSMain() {
       {
          this.logHistButton.toolTip = "<p>Toggle between displaying standard histogram and log histogram. " +
             "Currently showing log histogram.</p>";
+         this.logHistButton.text = "Std view";
       }
       else
       {
          this.logHistButton.toolTip = "<p>Toggle between displaying standard histogram and log histogram. " +
             "Currently showing standard histogram.</p>";
+            this.logHistButton.text = "Log view";
       }
       this.dialog.updateControls();
    }
@@ -304,38 +347,63 @@ function DialogGHSMain() {
 
    this.plotControlsLeft = new VerticalSizer( this )
    this.plotControlsLeft.margin = 0;
-   this.plotControlsLeft.spacing = 4;
+   //this.plotControlsLeft.spacing = 4;
    this.plotControlsLeft.add(this.stretchGraph);
    this.plotControlsLeft.add(this.channelSelectorControls);
    this.plotControlsLeft.add(this.graphInfoControls);
-   //this.plotControlsLeft.add(this.logGraphCheck);
 
 /*******************************************************************************
  * MAIN DIALOG - Create the graph navigation controls
  *******************************************************************************/
 
-   //Add zoom control for the graph
-   this.zoomControl = new NumericControl(this);
-   this.zoomControl.label.text = "Zoom:";
-   this.zoomControl.label.minWidth = minLabelWidth;
-   this.zoomControl.setRange(1.0, optionParameters.zoomMax);
-   var zoomPrecision = 2;
-   this.zoomControl.setPrecision( zoomPrecision );
-   this.zoomControl.slider.setRange( 1.0, Math.pow10(zoomPrecision) );
-   this.zoomControl.setValue(1.0);
-   this.zoomControl.toolTip = "<p>Zooms the graph view centred on the panning point.</p>";
-   this.zoomControl.onValueUpdated = function(value) {
+   // create zoom controls
+   this.zoomLabel = new Label( this )
+   this.zoomLabel.minWidth = 0.75 * minLabelWidth;
+   this.zoomLabel.text = "Zoom:";
+   this.zoomLabel.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+
+   // define zoom in button
+   this.zoomInButton = new ToolButton(this);
+   this.zoomInButton.icon = this.scaledResource( ":/icons/move-right-limit.png" );
+   this.zoomInButton.setScaledFixedSize( 24, 24 );
+   this.zoomInButton.toolTip = "<p>Zoom in</p>";
+   this.zoomInButton.onClick = function( checked ) {
+      this.dialog.zoomSlider.normalizedValue = 1.0;
+      this.dialog.stretchGraph.graphRange = 1.0 / this.dialog.zoomSlider.value;
+      this.dialog.updateControls();
+   }
+
+   // define zoom out button
+   this.zoomOutButton = new ToolButton(this);
+   this.zoomOutButton.icon = this.scaledResource( ":/icons/move-left-limit.png" );
+   this.zoomOutButton.setScaledFixedSize( 24, 24 );
+   this.zoomOutButton.toolTip = "<p>Zoom out</p>";
+   this.zoomOutButton.onClick = function( checked ) {
+      this.dialog.zoomSlider.normalizedValue = 0.0;
+      this.dialog.stretchGraph.graphRange = 1.0 / this.dialog.zoomSlider.value;
+      this.dialog.updateControls();
+   }
+
+   // define zoom slider
+   this.zoomSlider = new Slider( this );
+   this.zoomSlider.minWidth = 150;
+   this.zoomSlider.setRange(1.0, optionParameters.zoomMax);
+   this.zoomSlider.normalisedValue = 0.0;
+   this.zoomSlider.toolTip = "<p>Zooms the graph view centred on the panning point.</p>";
+   this.zoomSlider.onValueUpdated = function( value ){
       this.dialog.stretchGraph.graphRange = 1.0 / value;
       this.dialog.updateControls();
    }
 
-   // create zoom reset button
-   this.resetZoomButton = new ToolButton(this);
-   this.resetZoomButton.icon = this.scaledResource( ":/icons/clear.png" );
-   this.resetZoomButton.setScaledFixedSize( 24, 24 );
-   this.resetZoomButton.toolTip = "<p>Reset zoom.</p>";
-   this.resetZoomButton.onClick = function() {
-      this.dialog.stretchGraph.graphRange = 1.0;
+   // define zoom edit
+   this.zoomEdit = new NumericEdit( this );
+   //this.zoomEdit.minWidth = 150;
+   this.zoomEdit.setRange(1.0, optionParameters.zoomMax);
+   this.zoomEdit.setValue(this.dialog.zoomSlider.value);
+   this.zoomEdit.setPrecision(0);
+   this.zoomEdit.onValueUpdated = function( value )
+   {
+      this.dialog.stretchGraph.graphRange = 1.0 / value;
       this.dialog.updateControls();
    }
 
@@ -343,42 +411,80 @@ function DialogGHSMain() {
    this.zoomControls = new HorizontalSizer( this )
    this.zoomControls.margin = 0;
    this.zoomControls.spacing = 4;
-   this.zoomControls.add(this.zoomControl);
-   this.zoomControls.add(this.resetZoomButton);
+   this.zoomControls.add(this.zoomLabel);
+   this.zoomControls.add(this.zoomEdit);
+   this.zoomControls.add(this.zoomOutButton);
+   this.zoomControls.add(this.zoomSlider);
+   this.zoomControls.add(this.zoomInButton);
+   this.zoomControls.addStretch();
 
-   //Add pan control for the graph
-   this.panControl = new NumericControl( this );
-   this.panControl.label.text = "Pan:";
-   this.panControl.label.minWidth = minLabelWidth;
-   this.panControl.setRange(0.0, 1.0);
-   var panPrecision = 3;
-   this.panControl.setPrecision( panPrecision );
-   this.panControl.slider.setRange( 0, Math.pow10(panPrecision) );
-   this.panControl.setValue(0.0);
-   this.panControl.toolTip = "<p>Pans the graph view and specifies the centre point for a zoom." +
+   //Add pan controls for the graph
+   this.panLabel = new Label( this )
+   this.panLabel.minWidth = 0.75 * minLabelWidth;
+   this.panLabel.text = "Pan:";
+   this.panLabel.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+
+   // define pan right button
+   this.panRightButton = new ToolButton(this);
+   this.panRightButton.icon = this.scaledResource( ":/icons/move-right-limit.png" );
+   this.panRightButton.setScaledFixedSize( 24, 24 );
+   this.panRightButton.toolTip = "<p>Pan right</p>";
+   this.panRightButton.onClick = function( checked ) {
+      this.dialog.panSlider.value = 1.0;
+      this.dialog.stretchGraph.graphMidValue = 1.0;
+      this.dialog.updateControls();
+   }
+
+   // define pan left button
+   this.panLeftButton = new ToolButton(this);
+   this.panLeftButton.icon = this.scaledResource( ":/icons/move-left-limit.png" );
+   this.panLeftButton.setScaledFixedSize( 24, 24 );
+   this.panLeftButton.toolTip = "<p>Pan left</p>";
+   this.panLeftButton.onClick = function( checked ) {
+      this.dialog.panSlider.value = 0.0;
+      this.dialog.stretchGraph.graphMidValue = 0.0;
+      this.dialog.updateControls();
+   }
+
+   // define pan slider
+   this.panSlider = new Slider( this );
+   this.panSlider.minWidth = 150;
+   this.panSlider.setRange(0, 100);
+   this.panSlider.normalisedValue = 0.0;
+   this.panSlider.toolTip = "<p>Pans the graph view and specifies the centre point for a zoom." +
             " The pan point may be set by double mouse click on the graph.</p>";
-   this.panControl.onValueUpdated = function(value) {
+   this.panSlider.onValueUpdated = function( value ){
+      this.dialog.stretchGraph.graphMidValue = value / 100;
+      this.dialog.updateControls();
+   }
+
+   // define pan edit
+   this.panEdit = new NumericEdit( this );
+   this.panEdit.setRange(0, 1.0);
+   this.panEdit.setValue(this.dialog.panSlider.value);
+   this.panEdit.setPrecision(2);
+   this.panEdit.onValueUpdated = function( value )
+   {
       this.dialog.stretchGraph.graphMidValue = value;
       this.dialog.updateControls();
    }
 
-   // create pan reset button
-   this.resetPanButton = new ToolButton(this);
-   this.resetPanButton.icon = this.scaledResource( ":/icons/clear.png" );
-   this.resetPanButton.setScaledFixedSize( 24, 24 );
-   this.resetPanButton.toolTip = "<p>Reset zoom.</p>";
-   this.resetPanButton.onClick = function() {
-      this.dialog.stretchGraph.graphMidValue = 0.0;
-      this.dialog.updateControls();
-   }
+   this.panEdit.setValue(9.999);
+   let minPanZoomEditWidth = this.panEdit.width;
+   this.panEdit.setValue(this.dialog.panSlider.value);
+   this.zoomEdit.setFixedWidth(minPanZoomEditWidth);
+   this.panEdit.setFixedWidth(minPanZoomEditWidth);
 
    // layout pan controls
    this.panControls = new HorizontalSizer( this )
    this.panControls.margin = 0;
    this.panControls.spacing = 4;
-   this.panControls.add(this.panControl);
-   this.panControls.add(this.resetPanButton);
-
+   this.panControls.add(this.panLabel);
+   this.panControls.add(this.panEdit);
+   this.panControls.add(this.panLeftButton);
+   this.panControls.add(this.panSlider);
+   this.panControls.add(this.panRightButton);
+   this.panControls.addStretch();
 /*******************************************************************************
  * MAIN DIALOG - Create the histogram data controls
  *******************************************************************************/
@@ -398,11 +504,12 @@ function DialogGHSMain() {
    this.viewListLabel.text = "Target view:";
    this.viewListLabel.textAlignment = -1;
    this.viewList = new ViewList(this);
+   this.viewList.maxWidth = 350;
    this.viewList.getMainViews();
 
    this.viewList.onViewSelected = function (view) {
-      // If the selected view has an STF applied then offer to remove this
 
+      // If the selected view has an STF applied then offer to remove this
       if ((view.id != "") && (optionParameters.checkSTF))
       {
          var A = new Array();
@@ -431,9 +538,8 @@ function DialogGHSMain() {
    }
 
    // prepare the image inspection button
-   this.imageInspectorButton = new ToolButton( this );
-   this.imageInspectorButton.icon = this.scaledResource( ":/icons/picture.png" );
-   this.imageInspectorButton.setScaledFixedSize( 24, 24 );
+   this.imageInspectorButton = new PushButton( this );
+   this.imageInspectorButton.text = "Image Inspector";
    this.imageInspectorButton.toolTip = "<p>Open a new dialog to inspect the image.  " +
                   "Here you will be able to preview the target image and query pixels to see values " +
                   "before and after the stretch.  You can also see key statistics from the stretched histogram.</p>";
@@ -461,7 +567,9 @@ function DialogGHSMain() {
 
    this.maskList = new ComboBox(this);
    this.maskList.editEnabled = false;
-
+   this.maskList.toolTip = "<p>Specifies a mask that will modify the extent to which the transformation is applied to the image. " +
+         "Note that if a mask is applied it is not practical to generate a predicted histogram in real time. " +
+         "To see the transformed histogram you will need to generate it using the refresh button below he histogram.</p>"
    this.maskList.updateViews = function()
    {
       this.clear();
@@ -510,7 +618,7 @@ function DialogGHSMain() {
    this.viewPicker.spacing = 4;
    this.viewPicker.add(this.viewListLabel);
    this.viewPicker.add(this.viewList);
-   this.viewPicker.add(this.imageInspectorButton);
+   //this.viewPicker.add(this.imageInspectorButton);
    this.viewPicker.addStretch();
 
    this.maskPicker = new HorizontalSizer(this);
@@ -672,6 +780,7 @@ function DialogGHSMain() {
       {
          stretchParameters.ST = index;
          if (stretchParameters.STN() == "STF Transformation") ghsStretch.calculateVariables(this.dialog.targetView);
+         this.dialog.stretchGraph.clickResetButton = undefined;
          this.dialog.updateControls();
       }
    }
@@ -770,7 +879,10 @@ function DialogGHSMain() {
    *********** create the SP input slider ************************************
 */
 
-   this.SPControl = new ControlParamInput(stretchParameters.SP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_SP, minLabelWidth);
+   // first set up an array that will hold all reset buttons that are linked to the hsitogram graph
+   this.linkableInputs = new Array();
+
+   this.SPControl = new ControlParamInput(stretchParameters.SP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_SP, minLabelWidth, this.stretchGraph);
    this.SPControl.numControl.toolTip = "<p>Sets the focus point around which the stretch is applied - " +
       "contrast will be distributed symmetrically about SP.  While 'b' provides the degree of focus of the stretch," +
       " SP determines where that focus is applied.  SP should generally be placed within a histogram peak so that the stretch " +
@@ -780,51 +892,50 @@ function DialogGHSMain() {
       ". Note this parameter is specified by reference to the target image pixel values.</p>";
    this.SPControl.numControl.onValueUpdated = function( value )
    {
-      var SP = value;
-      var HP = stretchParameters.HP;
-      var LP = stretchParameters.LP;
-      var q = Math.pow10(-stretchParameters.LPSPHPPrecision);
-
-
-      if (SP >= HP)
-      {
-         // SP must be <= HP
-         stretchParameters.SP = HP;
-      }
-      else if (SP < LP)
-      {
-         // SP must be >= LP
-         stretchParameters.SP = LP;
-      }
-      else
-      {
-         stretchParameters.SP = SP;
-      }
-
-      this.setValue(stretchParameters.SP);
+      stretchParameters.SP = value;
+      //stretchParameters.LP = Math.min(stretchParameters.LP, stretchParameters.SP);
+      //stretchParameters.HP = Math.max(stretchParameters.HP, stretchParameters.SP);
+      //stretchParameters.SP = Math.max(stretchParameters.LP, stretchParameters.SP);
+      //stretchParameters.SP = Math.min(stretchParameters.HP, stretchParameters.SP);
       this.dialog.updateControls();
    }
-   this.SPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_SP + " to the histogram readout value if selected, otherwise set to " +
-            stretchParameters.default_SP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
-   this.SPControl.resetButton.onClick = function()
+   this.SPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_SP + " to " + stretchParameters.default_SP +
+         ". Note if LP is not zero, it will also be set to zero to ensure LP is not greater than SP.";
+
+   this.SPControl.resetButton.onClick = function( checked )
    {
-      if (this.dialog.stretchGraph.clickLevel < 0.0)
-      {
-         stretchParameters.SP = stretchParameters.default_SP;
-      }
-      else
-      {
-         stretchParameters.SP = Math.max(stretchParameters.LP, Math.min(stretchParameters.HP, this.dialog.stretchGraph.clickLevel));
-      }
+      //if ((this.dialog.stretchGraph.clickLevel < 0) || (optionParameters.paramHistLink)) {stretchParameters.SP = stretchParameters.default_SP;}
+      //else {stretchParameters.SP = this.dialog.stretchGraph.clickLevel;}
+      stretchParameters.SP = stretchParameters.default_SP;
+
+      //stretchParameters.LP = Math.min(stretchParameters.LP, stretchParameters.SP);
+      //stretchParameters.HP = Math.max(stretchParameters.HP, stretchParameters.SP);
+
+      //stretchParameters.SP = Math.max(stretchParameters.LP, stretchParameters.SP);
+      ///stretchParameters.SP = Math.min(stretchParameters.HP, stretchParameters.SP);
+
       this.dialog.updateControls();
    }
+
+   this.SPControl.histLinkButton.updateParamValue = function()
+   {
+      if (this.dialog.stretchGraph.clickLevel < 0.0) {stretchParameters.SP = stretchParameters.default_SP;}
+      else {stretchParameters.SP = this.dialog.stretchGraph.clickLevel;}
+
+      //stretchParameters.LP = Math.min(stretchParameters.LP, stretchParameters.SP);
+      //stretchParameters.HP = Math.max(stretchParameters.HP, stretchParameters.SP);
+
+      //stretchParameters.SP = Math.max(stretchParameters.LP, stretchParameters.SP);
+      //stretchParameters.SP = Math.min(stretchParameters.HP, stretchParameters.SP);
+   }
+   this.linkableInputs.push(this.SPControl);
 
 /*
    ***************************************************************************
    *********** create the LP input slider ************************************
 */
 
-   this.LPControl = new ControlParamInput(stretchParameters.LP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_LP, minLabelWidth);
+   this.LPControl = new ControlParamInput(stretchParameters.LP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_LP, minLabelWidth, this.stretchGraph);
    this.LPControl.numControl.toolTip = "<p>Sets a value below which the stretch is modified to preserve contrast in the shadows/lowlights. " +
       "This is done by performing a linear stretch of the data below the 'LP' level by reserving contrast from the rest of the image." +
       " Moving the LP level towards the current setting of SP changes both the scope (range) and the amount of this contrast reservation, the net effect" +
@@ -851,9 +962,18 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.LP);
       this.dialog.updateControls();
    }
-   this.LPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_LP + " to the histogram readout value if selected, otherwise set to " +
-            stretchParameters.default_LP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
-   this.LPControl.resetButton.onClick = function()
+   this.LPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_LP + " to " + stretchParameters.default_LP;
+
+   this.LPControl.resetButton.onClick = function( checked )
+   {
+      //if ((this.dialog.stretchGraph.clickLevel < 0) || (optionParameters.paramHistLink)) {stretchParameters.LP = stretchParameters.default_LP;}
+      //else {stretchParameters.LP = this.dialog.stretchGraph.clickLevel;}
+      stretchParameters.LP = stretchParameters.default_LP;
+
+      this.dialog.updateControls();
+   }
+
+   this.LPControl.histLinkButton.updateParamValue = function()
    {
       if (this.dialog.stretchGraph.clickLevel < 0.0)
       {
@@ -863,15 +983,15 @@ function DialogGHSMain() {
       {
          stretchParameters.LP = Math.min(stretchParameters.SP, this.dialog.stretchGraph.clickLevel);
       }
-      this.dialog.updateControls();
    }
+   this.linkableInputs.push(this.LPControl);
 
 /*
    ***************************************************************************
    *********** create the HP input slider ************************************
 */
 
-   this.HPControl = new ControlParamInput(stretchParameters.HP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_HP, minLabelWidth);
+   this.HPControl = new ControlParamInput(stretchParameters.HP, 0, 1, stretchParameters.LPSPHPPrecision, stretchParameters.name_HP, minLabelWidth, this.stretchGraph);
    this.HPControl.numControl.toolTip = "<p>Sets a value above which the stretch is modified to preserve contrast in the highlights/stars. " +
       "This is done by performing a linear stretch of the data above the 'HP' level by reserving contrast from the rest of the image." +
       " Moving the HP level towards the current setting of SP increases both the scope (range) and the amount of this contrast reservation, the net effect" +
@@ -897,9 +1017,18 @@ function DialogGHSMain() {
       this.setValue(stretchParameters.HP);
       this.dialog.updateControls();
    }
-   this.HPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_HP + " to the histogram readout value if selected, otherwise set to " +
-            stretchParameters.default_HP.toFixed(stretchParameters.LPSPHPPrecision) + ".</p>";
-   this.HPControl.resetButton.onClick = function()
+   this.HPControl.resetButton.toolTip = "<p>Reset " + stretchParameters.name_HP + " to " + stretchParameters.default_HP;
+
+   this.HPControl.resetButton.onClick = function( checked )
+   {
+      //if ((this.dialog.stretchGraph.clickLevel < 0) || (optionParameters.paramHistLink)) {stretchParameters.HP = stretchParameters.default_HP;}
+      //else {stretchParameters.HP = this.dialog.stretchGraph.clickLevel;}
+      stretchParameters.HP = stretchParameters.default_HP;
+
+      this.dialog.updateControls();
+   }
+
+   this.HPControl.histLinkButton.updateParamValue = function()
    {
       if (this.dialog.stretchGraph.clickLevel < 0.0)
       {
@@ -909,15 +1038,15 @@ function DialogGHSMain() {
       {
          stretchParameters.HP = Math.max(stretchParameters.SP, this.dialog.stretchGraph.clickLevel);
       }
-      this.dialog.updateControls();
    }
+   this.linkableInputs.push(this.HPControl);
 
 /*
    ***************************************************************************
    *********** create the BP input slider ************************************
 */
 
-   this.BPControl = new ControlParamInput(stretchParameters.BP, -1, 1, stretchParameters.BPWPPrecision, stretchParameters.name_BP, minLabelWidth);
+   this.BPControl = new ControlParamInput(stretchParameters.BP, -1, 1, stretchParameters.BPWPPrecision, stretchParameters.name_BP, minLabelWidth, this.stretchGraph);
    this.BPControl.numControl.toolTip = "<p>Sets the black point for a linear stretch of the image." +
          "  Note that any pixel with values less than the blackpoint input will be clipped and the data lost." +
          "  Contrast gained by performing the linear stretch will be evenly distributed over the image, which will" +
@@ -930,8 +1059,19 @@ function DialogGHSMain() {
       if (stretchParameters.Inv) stretchParameters.BP = Math.min(0.0, value);
       this.dialog.updateControls();
    }
-   this.BPControl.resetButton.toolTip = "<p>Reset black point to the histogram readout value if selected, otherwise set to zero.</p>";
-   this.BPControl.resetButton.onClick = function()
+   this.BPControl.resetButton.toolTip = "<p>Reset black point to zero.</p>"
+          + this.BPControl.resetButton.toolTip;
+
+   this.BPControl.resetButton.onClick = function( checked )
+   {
+      //if ((this.dialog.stretchGraph.clickLevel < 0) || (optionParameters.paramHistLink)) {stretchParameters.BP = stretchParameters.default_BP;}
+      //else {stretchParameters.BP = this.dialog.stretchGraph.clickLevel;}
+      stretchParameters.BP = stretchParameters.default_BP;
+
+      this.dialog.updateControls();
+   }
+
+   this.BPControl.histLinkButton.updateParamValue = function()
    {
       if (this.dialog.stretchGraph.clickLevel < 0.0)
       {
@@ -942,8 +1082,8 @@ function DialogGHSMain() {
          let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
          stretchParameters.BP = Math.min(stretchParameters.WP - q, this.dialog.stretchGraph.clickLevel);
       }
-      this.dialog.updateControls();
    }
+   this.linkableInputs.push(this.BPControl);
 
 /*
    ***************************************************************************
@@ -991,7 +1131,7 @@ function DialogGHSMain() {
    *********** create the WP input slider ************************************
 */
 
-   this.WPControl = new ControlParamInput(stretchParameters.WP, 0, 2, stretchParameters.BPWPPrecision, stretchParameters.name_WP, minLabelWidth);
+   this.WPControl = new ControlParamInput(stretchParameters.WP, 0, 2, stretchParameters.BPWPPrecision, stretchParameters.name_WP, minLabelWidth, this.stretchGraph);
    this.WPControl.numControl.toolTip = "<p>Sets the white point for a linear stretch of the image." +
          "  Note that any pixel with value greater than the white-point input will be clipped and the data lost." +
          "  Contrast gained by performing the linear stretch will be evenly distributed over the image, which will" +
@@ -1004,8 +1144,19 @@ function DialogGHSMain() {
       if (stretchParameters.Inv) stretchParameters.WP = Math.max(1.0, value);
       this.dialog.updateControls();
    }
-   this.WPControl.resetButton.toolTip = "<p>Reset white point to the histogram readout value if selected, otherwise set to 1.0.</p>";
-   this.WPControl.resetButton.onClick = function()
+   this.WPControl.resetButton.toolTip = "<p>Reset white point to 1.0.</p>"
+          + this.WPControl.resetButton.toolTip;
+
+   this.WPControl.resetButton.onClick = function( checked )
+   {
+      //if ((this.dialog.stretchGraph.clickLevel < 0) || (optionParameters.paramHistLink)) {stretchParameters.WP = stretchParameters.default_WP;}
+      //else {stretchParameters.WP = this.dialog.stretchGraph.clickLevel;}
+      stretchParameters.WP = stretchParameters.default_WP;
+
+      this.dialog.updateControls();
+   }
+
+   this.WPControl.histLinkButton.updateParamValue = function()
    {
       if (this.dialog.stretchGraph.clickLevel < 0.0)
       {
@@ -1016,8 +1167,8 @@ function DialogGHSMain() {
          let q = 1 / Math.pow10(stretchParameters.BPWPPrecision);
          stretchParameters.WP = Math.max(stretchParameters.BP + q, this.dialog.stretchGraph.clickLevel);
       }
-      this.dialog.updateControls();
    }
+   this.linkableInputs.push(this.WPControl);
 
 /*
    ***************************************************************************
@@ -1160,6 +1311,19 @@ function DialogGHSMain() {
    this.imagePreview.crossActive = optionParameters.previewCrossActive;
    this.imagePreview.targetView = this.targetView;
 
+   this.imageReadout = new ControlReadout( this );
+   this.imageReadout.previewControl = this.imagePreview;
+   this.imageReadout.stretchGraph = this.stretchGraph;
+   this.imageReadout.stretchParameters = stretchParameters;
+
+   this.imagePreview.readoutControl = this.imageReadout;
+   this.stretchGraph.readoutControl = this.imageReadout;
+
+   this.readoutControls = new GroupBox( this );
+   this.readoutControls.title = "Readout controls";
+   this.readoutControls.sizer = new HorizontalSizer();
+   this.readoutControls.sizer.add(this.imageReadout);
+
    this.optionShowButtons = new GroupBox(this);
 
    this.optShowPreview = new RadioButton(this.optionShowButtons);
@@ -1186,7 +1350,7 @@ function DialogGHSMain() {
 
    this.zoomLabel = new Label(this.optionShowButtons);
    this.zoomLabel.text = "Reset zoom";
-   this.zoomLabel.textAlignment = 0x81;
+   this.zoomLabel.textAlignment = TextAlign_Left | TextAlign_VertCenter;
 
    this.resetZoomButton = new ToolButton(this.optionShowButtons)
    this.resetZoomButton.icon = this.scaledResource( ":/toolbar/view-zoom-fit.png" );
@@ -1199,6 +1363,8 @@ function DialogGHSMain() {
       this.dialog.imagePreview.resetImage();
    }
 
+
+
    this.previewTimer = new Timer();
    this.previewTimer.interval = optionParameters.previewDelay;
    this.previewTimer.periodic = true;
@@ -1206,6 +1372,7 @@ function DialogGHSMain() {
    this.previewTimer.busy = false;
    this.previewTimer.lastSPKeyCheck = "";
    this.previewTimer.lastSPKeyRefresh = "";
+   this.previewTimer.updateCount = 0;
 
    this.previewTimer.onTimeout = function()
    {
@@ -1232,22 +1399,26 @@ function DialogGHSMain() {
       this.lastSPKeyCheck = currentSPKey
    }
 
+   this.resetZoomSizer = new HorizontalSizer( this.optionShowButtons )
+   this.resetZoomSizer.add(this.resetZoomButton);
+   this.resetZoomSizer.addSpacing(8);
+   this.resetZoomSizer.add(this.zoomLabel);
+
    this.optionShowButtons.title = "Preview controls";
-   this.optionShowButtons.sizer = new HorizontalSizer();
+   this.optionShowButtons.sizer = new VerticalSizer();
    this.optionShowButtons.sizer.margin = 8;
    this.optionShowButtons.sizer.add(this.optShowPreview);
-   this.optionShowButtons.sizer.addSpacing(8);
+   this.optionShowButtons.sizer.addSpacing(4);
    this.optionShowButtons.sizer.add(this.optShowTarget);
-   this.optionShowButtons.sizer.addSpacing(8);
-   this.optionShowButtons.sizer.add(this.resetZoomButton);
-   this.optionShowButtons.sizer.addSpacing(8);
-   this.optionShowButtons.sizer.add(this.zoomLabel);
-
+   this.optionShowButtons.sizer.addSpacing(4);
+   this.optionShowButtons.sizer.add(this.resetZoomSizer);
+   this.optionShowButtons.sizer.addSpacing(4);
+   this.optionShowButtons.sizer.add(this.imageInspectorButton);
 
    this.previewButtons = new HorizontalSizer(this)
-   this.previewButtons.addStretch();
    this.previewButtons.add(this.optionShowButtons);
    this.previewButtons.addStretch();
+   this.previewButtons.add(this.readoutControls);
 
 
 /*******************************************************************************
@@ -1465,6 +1636,7 @@ function DialogGHSMain() {
       this.previewTimer.stop();
 
       stretchParameters.reset();
+      this.stretchGraph.clickResetButton = undefined;
       this.newImageIdEdit.text = "<Auto>";
       this.updateControls();
 
@@ -1505,7 +1677,6 @@ function DialogGHSMain() {
          optionParameters.copy(optParams);
          this.setOptionParameters(optionParameters);
       }
-      if( previewChangeSize ) {this.previewRefresh();}
 
       if (lumCoeffsChanged && (this.targetView.id != ""))
       {
@@ -1521,7 +1692,11 @@ function DialogGHSMain() {
             ghsViews.histArrays[1][5] = newLumHistData[1];
             ghsViews.cumHistArrays[1][5] = newLumHistData[2];
          }
+
+         this.imagePreview.setImage(this.targetView);
       }
+
+      if( previewChangeSize && !((lumCoeffsChanged && (this.targetView.id != ""))) ) {this.previewRefresh();}
 
       this.imagePreview.lastStretchKey = "";
       if (timerWasRunning) this.previewTimer.start();
@@ -1559,9 +1734,6 @@ this.previewRefresh = function()
       this.centrePanel.hide();
       this.rightPanel.hide();
    }
-   //this.imagePreview.setFixedSize(optionParameters.previewWidth, optionParameters.previewHeight);
-   //this.leftPanel.adjustToContents();
-   //this.rightPanel.adjustToContents();
    this.adjustToContents();
    this.setVariableSize();
    this.imagePreview.resetImage();
@@ -1573,6 +1745,7 @@ this.previewRefresh = function()
 
 this.newImageRefresh = function()
 {
+
    let timerWasRunning = this.previewTimer.isRunning;
    this.previewTimer.stop();
    this.enabled = false;
@@ -1585,7 +1758,13 @@ this.newImageRefresh = function()
 
    if (this.targetView.id != "")
    {
-      if (this.targetView.image.isGrayscale) {stretchParameters.channelSelector = [false, false, false, true, false, false, false];}
+      if (this.targetView.image.isGrayscale)
+      {
+         stretchParameters.channelSelector = [false, false, false, true, false, false, false];
+         this.imageReadout.dataChannel.currentItem = 0;
+         this.imageReadout.dataChannel.enabled = false;
+      }
+      else {this.imageReadout.dataChannel.enabled = true;}
       Console.writeln("Loading target view: ", this.targetView.id);
       this.targetView.window.currentView = this.targetView;
       if (optionParameters.bringToFront) this.targetView.window.bringToFront();
@@ -1607,6 +1786,7 @@ this.newImageRefresh = function()
       let histData = calculateHistograms(this.targetView, stretchParameters.getLumCoefficients(this.targetView));
       this.histogramData.initParams(histData[2], histData[1]);
       ghsViews.setView(this.targetView, histData);
+      ghsStretch.setSTF(this.targetView)
       this.stretchGraph.targetView = this.targetView;
 
 
@@ -1618,10 +1798,14 @@ this.newImageRefresh = function()
    {
       Console.writeln("Clearing target view");
       ghsViews.setView(new View());
+      ghsStretch.setSTF();
       Console.writeln("Clearing preview");
       this.imagePreview.setImage(new View());
       this.stretchGraph.targetView = new View();
    }
+
+   this.imageReadout.showRO = false;
+   this.imageReadout.update();
 
    Console.writeln("Refreshing");
    this.updateControls();
@@ -1629,6 +1813,7 @@ this.newImageRefresh = function()
    Console.hide();
    this.enabled = true;
    if (timerWasRunning) this.previewTimer.start();
+
 }
 
 /*******************************************************************************
@@ -1651,11 +1836,14 @@ this.newImageRefresh = function()
 
       this.stretchGraph.graphRef1Active = ghsOP.graphRef1Active;
       this.stretchGraph.graphRef2Active = ghsOP.graphRef2Active;
+      this.stretchGraph.graphRef3Active = ghsOP.graphRef3Active;
       this.stretchGraph.graphGridActive = ghsOP.graphGridActive;
 
       this.stretchGraph.graphLineCol = ghsOP.graphLineCol;
+      this.stretchGraph.graphBlockCol = ghsOP.graphBlockCol;
       this.stretchGraph.graphRef1Col = ghsOP.graphRef1Col;
       this.stretchGraph.graphRef2Col = ghsOP.graphRef2Col;
+      this.stretchGraph.graphRef3Col = ghsOP.graphRef3Col;
       this.stretchGraph.graphGridCol = ghsOP.graphGridCol;
       this.stretchGraph.graphBackCol = ghsOP.graphBackCol;
 
@@ -1672,10 +1860,28 @@ this.newImageRefresh = function()
       stretchParameters.default_lumCoeffSource = ghsOP.lumCoeffSource;
       stretchParameters.default_lumCoefficients = new Array(ghsOP.lumCoefficients[0], ghsOP.lumCoefficients[1], ghsOP.lumCoefficients[2])
 
-      let v = this.zoomControl.value;
-      this.zoomControl.setValue(Math.min(v, ghsOP.zoomMax));
-      this.stretchGraph.graphRange = 1.0 / this.zoomControl.value;
-      this.zoomControl.setRange(1.0, ghsOP.zoomMax);
+      let v = this.zoomSlider.value;
+      this.zoomSlider.value = Math.min(v, ghsOP.zoomMax);
+      this.zoomEdit.setValue(this.zoomSlider.value);
+      this.stretchGraph.graphRange = 1.0 / this.zoomSlider.value;
+      this.zoomSlider.setRange(1.0, ghsOP.zoomMax);
+      this.zoomEdit.setRange(1.0, ghsOP.zoomMax);
+
+      let roa = this.imageReadout.areaSize;
+      this.imageReadout.areaSize = Math.min(roa, ghsOP.readoutAreaMax);
+      this.imageReadout.areaSizeNum.setValue(this.imageReadout.areaSize);
+      this.imageReadout.areaSizeNum.setRange(0.0, ghsOP.readoutAreaMax);
+      this.imagePreview.setReadout(this.imageReadout.areaSize);
+
+      if (ghsOP.paramHistLink)
+      {
+         for (let i = 0; i < this.linkableInputs.length; ++i) {this.linkableInputs[i].histLinkButton.show();}
+      }
+      else
+      {
+         this.stretchGraph.clickResetButton = undefined;
+         for (let i = 0; i < this.linkableInputs.length; ++i) {this.linkableInputs[i].histLinkButton.hide();}
+      }
    }
 
 /*******************************************************************************
@@ -1694,6 +1900,10 @@ this.newImageRefresh = function()
          //Check any modifications to reflect stretch type
          var ST = stretchParameters.ST;
          var STN = stretchParameters.STN();
+
+         // Modify LP or HP if SP requires it
+         stretchParameters.LP = Math.min(stretchParameters.LP, stretchParameters.SP);
+         stretchParameters.HP = Math.max(stretchParameters.HP, stretchParameters.SP);
 
          // Update stretch parameter controls
          this.transfList.currentItem = stretchParameters.ST;
@@ -1726,7 +1936,27 @@ this.newImageRefresh = function()
             this.combineStretchControls.hide();
             this.ghsStretchControls.show();
             this.inverseTransfCheck.enabled = true;
-            this.bControl.enabled = true;}
+
+            //if (stretchParameters.LP > 0) {this.SPControl.resetButton.enabled = false;}
+            //else {this.SPControl.resetButton.enabled = true;}
+            if (this.imageReadout.roAreaData != undefined)
+            {
+               //if ((this.imageReadout.roAreaData[this.imageReadout.roDataIndex] < stretchParameters.LP) ||
+               //   (this.imageReadout.roAreaData[this.imageReadout.roDataIndex] > stretchParameters.HP) ||
+               //   (!this.imageReadout.showRO))
+               if (!this.imageReadout.showRO)
+               {
+                  this.imageReadout.dataValueSend.enabled = false;
+               }
+               else
+               {
+                  this.imageReadout.dataValueSend.enabled = true;
+               }
+            }
+
+            this.bControl.enabled = true;
+            this.imageReadout.dataValueSend.text = "Send value to SP";
+            this.graphInfoSendButton.text = "Send value to SP";}
 
          if (STN == "Histogram Transformation") {                         // Traditional histogram transformation
             this.linearStretchControls.hide();
@@ -1734,7 +1964,27 @@ this.newImageRefresh = function()
             this.combineStretchControls.hide();
             this.ghsStretchControls.show();
             this.inverseTransfCheck.enabled = true;
-            this.bControl.enabled = false;}
+
+            //if (stretchParameters.LP > 0) {this.SPControl.resetButton.enabled = false;}
+            //else {this.SPControl.resetButton.enabled = true;}
+            if (this.imageReadout.roAreaData != undefined)
+            {
+               //if ((this.imageReadout.roAreaData[this.imageReadout.roDataIndex] < stretchParameters.LP) ||
+               //   (this.imageReadout.roAreaData[this.imageReadout.roDataIndex] > stretchParameters.HP) ||
+               //   (!this.imageReadout.showRO))
+               if (!this.imageReadout.showRO)
+               {
+                  this.imageReadout.dataValueSend.enabled = false;
+               }
+               else
+               {
+                  this.imageReadout.dataValueSend.enabled = true;
+               }
+            }
+
+            this.bControl.enabled = false;
+            this.imageReadout.dataValueSend.text = "Send value to SP";
+            this.graphInfoSendButton.text = "Send value to SP";}
 
          if (STN == "Arcsinh Stretch") {                         // Arcsinh stretch
             this.linearStretchControls.hide();
@@ -1742,7 +1992,27 @@ this.newImageRefresh = function()
             this.combineStretchControls.hide();
             this.ghsStretchControls.show();
             this.inverseTransfCheck.enabled = true;
-            this.bControl.enabled = false;}
+
+            //if (stretchParameters.LP > 0) {this.SPControl.resetButton.enabled = false;}
+            //else {this.SPControl.resetButton.enabled = true;}
+            if (this.imageReadout.roAreaData != undefined)
+            {
+               //if ((this.imageReadout.roAreaData[this.imageReadout.roDataIndex] < stretchParameters.LP) ||
+               //   (this.imageReadout.roAreaData[this.imageReadout.roDataIndex] > stretchParameters.HP) ||
+               //   (!this.imageReadout.showRO))
+               if (!this.imageReadout.showRO)
+               {
+                  this.imageReadout.dataValueSend.enabled = false;
+               }
+               else
+               {
+                  this.imageReadout.dataValueSend.enabled = true;
+               }
+            }
+
+            this.bControl.enabled = false;
+            this.imageReadout.dataValueSend.text = "Send value to SP";
+            this.graphInfoSendButton.text = "Send value to SP";}
 
          if (STN == "Linear Stretch") {                         // Linear prestretch
             this.ghsStretchControls.hide();
@@ -1755,7 +2025,23 @@ this.newImageRefresh = function()
             else {
                //stretchParameters.Inv = false;
                this.inverseTransfCheck.checked = false;//stretchParameters.Inv;
-               this.inverseTransfCheck.enabled = false;}}
+               this.inverseTransfCheck.enabled = false;}
+            if (this.imageReadout.roAreaData != undefined)
+            {
+               if ((this.imageReadout.roAreaData[this.imageReadout.roDataIndex] > stretchParameters.WP) ||
+                  (!this.imageReadout.showRO))
+               {
+                  this.imageReadout.dataValueSend.enabled = false;
+               }
+               else
+               {
+                  this.imageReadout.dataValueSend.enabled = true;
+               }
+            }
+            this.imageReadout.dataValueSend.text = "Send value to BP";
+            this.graphInfoSendButton.text = "Send value to BP";
+            }
+
 
          if (STN == "Image Inversion") {                         // Image inversion
             this.ghsStretchControls.hide();
@@ -1764,7 +2050,11 @@ this.newImageRefresh = function()
             this.combineStretchControls.hide();
             //stretchParameters.Inv = false;
             this.inverseTransfCheck.checked = false;//stretchParameters.Inv;
-            this.inverseTransfCheck.enabled = false;}
+            this.inverseTransfCheck.enabled = false;
+            this.imageReadout.dataValueSend.enabled = false;
+            this.graphInfoSendButton.enabled = false;
+            this.imageReadout.dataValueSend.text = "Send unavailable";
+            this.graphInfoSendButton.text = "Send unavailable";}
 
          if (STN == "Image Blend") {                         // Image blend
             this.ghsStretchControls.hide();
@@ -1773,7 +2063,11 @@ this.newImageRefresh = function()
             this.combineStretchControls.show();
             //stretchParameters.Inv = false;
             this.inverseTransfCheck.checked = false;//stretchParameters.Inv;
-            this.inverseTransfCheck.enabled = false;}
+            this.inverseTransfCheck.enabled = false;
+            this.imageReadout.dataValueSend.enabled = false;
+            this.graphInfoSendButton.enabled = false;
+            this.imageReadout.dataValueSend.text = "Send unavailable";
+            this.graphInfoSendButton.text = "Send unavailable";}
 
          if (STN == "STF Transformation") {                         // Standard STF transformation
             this.ghsStretchControls.hide();
@@ -1782,7 +2076,11 @@ this.newImageRefresh = function()
             this.stfStretchControls.show();
             //stretchParameters.Inv = false;
             this.inverseTransfCheck.checked = false;//stretchParameters.Inv;
-            this.inverseTransfCheck.enabled = false;}
+            this.inverseTransfCheck.enabled = false;
+            this.imageReadout.dataValueSend.enabled = false;
+            this.graphInfoSendButton.enabled = false;
+            this.imageReadout.dataValueSend.text = "Send unavailable";
+            this.graphInfoSendButton.text = "Send unavailable";}
 
          if (this.targetView.id == "")
          {
@@ -1818,8 +2116,24 @@ this.newImageRefresh = function()
             this.resetZoomButton.enabled = true;
          }
 
+         for (let i = 0; i < this.linkableInputs.length; ++i)
+         {
+            if (this.stretchGraph.clickResetButton === this.linkableInputs[i].histLinkButton)
+            {
+               this.linkableInputs[i].histLinkButton.icon = this.scaledResource( ":/icons/link.png" );
+               this.stretchGraph.clickLevel = this.linkableInputs[i].numControl.value;
+            }
+            else
+            {
+               this.linkableInputs[i].histLinkButton.icon = this.scaledResource( ":/icons/clear-inverted.png" );
+               if (this.stretchGraph.clickResetButton != undefined) {this.linkableInputs[i].histLinkButton.enabled = false;}
+               else {this.linkableInputs[i].histLinkButton.enabled = true;}
+            }
+         }
+
          this.viewList.reload();
          this.combineViewList.reload();
+
          // remove images that are being used in the background in ghsViews
          for (let i = 1; i < ghsViews.views.length; ++i)
          {
@@ -1917,16 +2231,17 @@ this.newImageRefresh = function()
          {
             info2 = "[None]";
             this.graphInfoButton.enabled = false;
+            this.graphInfoSendButton.enabled = false;
          }
          else
          {
             var plotY = ghsStretch.calculateStretch(clickX);
-            info2 = "x="  + clickX.toFixed(5) + ", y=" + plotY.toFixed(5);
+            info1 += "x="  + clickX.toFixed(5) + ", y=" + plotY.toFixed(5);
 
             if ( this.targetView.id != "" )
             {
                var level = Math.floor(clickX * ghsViews.getHistData(0)[0][0].resolution);
-               info2 += ", level=" + level.toString();
+               info2 += "Level=" + level.toString();
                let chs = this.channels();
                if (chs.length == 1)
                {
@@ -1943,15 +2258,26 @@ this.newImageRefresh = function()
                   }
                }
             }
+
             this.graphInfoButton.enabled = true;
+            //if (((ST < 3) && (!(clickX < stretchParameters.LP) && !(clickX > stretchParameters.HP))) || ((STN = "Linear Stretch") && (!(clickX < stretchParameters.WP))))
+            if ((ST < 3) || ((STN == "Linear Stretch") && (!(clickX > stretchParameters.WP))))
+            {
+               this.graphInfoSendButton.enabled = true;
+            }
+            else {this.graphInfoSendButton.enabled = false;}
          }
-         this.graphInfo1.text = info1 + info2;
+         //this.graphInfo1.text = info1 + info2;
+         this.graphInfo1.text = info1;
+         this.graphInfo2.text = info2;
 
          // Update the graph navigation controls
-         this.zoomControl.setValue(1.0 / this.stretchGraph.graphRange);
-         this.panControl.setValue(this.stretchGraph.graphMidValue);
+         this.zoomSlider.value = 1.0 / this.stretchGraph.graphRange;
+         this.zoomEdit.setValue(1.0 / this.stretchGraph.graphRange);
+         this.panSlider.value = 100 * this.stretchGraph.graphMidValue;
+         this.panEdit.setValue(this.stretchGraph.graphMidValue);
 
-         // Update the graph
+         // update the graph
          this.stretchGraph.repaint();
 
          // update the undo and redo buttons
@@ -1960,7 +2286,7 @@ this.newImageRefresh = function()
          if (this.targetView.canGoForward) {this.redoButton.enabled = true;}
          else {this.redoButton.enabled = false;}
 
-         // Update preview
+         // update preview
          if ((this.showRTP) && (!this.imagePreview.invalidPreview))
          {
             if (this.imagePreview.lastStretchKey != longStretchKey(ghsStretch, this.targetView) + this.imagePreview.imageSelection.toString())
@@ -1969,6 +2295,9 @@ this.newImageRefresh = function()
                this.imagePreview.repaint();
             }
          }
+
+         // update readout
+         this.imageReadout.update();
 
          if (timerWasRunning) this.previewTimer.start();
          this.isBusy = false;
@@ -1986,11 +2315,11 @@ this.newImageRefresh = function()
    this.graphControls.sizer = new VerticalSizer( this );
    this.graphControls.sizer.margin = 0;
    this.graphControls.sizer.add(this.plotControlsLeft);
-   this.graphControls.sizer.addSpacing(layoutSpacing);
-   this.graphControls.sizer.add(this.channelSelectorControls);
-   this.graphControls.sizer.addSpacing(layoutSpacing);
+   //this.graphControls.sizer.addSpacing(layoutSpacing);
+   //this.graphControls.sizer.add(this.channelSelectorControls);
+   //this.graphControls.sizer.addSpacing(layoutSpacing);
    this.graphControls.sizer.add(this.zoomControls);
-   this.graphControls.sizer.addSpacing(layoutSpacing);
+   //this.graphControls.sizer.addSpacing(layoutSpacing);
    this.graphControls.sizer.add(this.panControls);
    this.graphBar = new SectionBar(this, "Graph");
    this.graphBar.setSection(this.graphControls);
@@ -2089,9 +2418,9 @@ this.newImageRefresh = function()
    this.previewControls = new Control( this );
    this.previewControls.sizer = new VerticalSizer (this );
    this.previewControls.sizer.margin = 0;
-   this.previewControls.sizer.add(this.imagePreview);
-   this.previewControls.sizer.addSpacing(layoutSpacing);
    this.previewControls.sizer.add(this.previewButtons);
+   this.previewControls.sizer.addSpacing(layoutSpacing);
+   this.previewControls.sizer.add(this.imagePreview);
    this.previewControls.sizer.addStretch();
    this.previewControlsBar = new SectionBar(this, "Preview");
    this.previewControlsBar.setSection(this.previewControls);
@@ -2186,6 +2515,10 @@ this.newImageRefresh = function()
 
    this.adjustToContents();
    this.setVariableSize();
+
+   this.defaultButton = new PushButton( this );
+   this.defaultButton.defaultButton = true;
+   this.defaultButton.hide();
 
 
 }

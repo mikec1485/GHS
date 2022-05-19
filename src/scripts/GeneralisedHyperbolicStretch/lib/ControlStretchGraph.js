@@ -4,7 +4,7 @@
  *
  * STRETCH GRAPH CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -31,6 +31,8 @@ function ControlStretchGraph()
    this.__base__ = Frame;
    this.__base__();
 
+   this.runCount = 0;
+
    this.stretch = new GHSStretch();
    this.targetView = new View();
    this.views = new GHSViews();
@@ -51,21 +53,29 @@ function ControlStretchGraph()
    this.graphRange = 1.0;
    this.graphMidValue = 0.0;
    this.graphZoomCentre = 0.0;
-   this.clickLevel = -1;
    this.logHistogram = false;
+
+   this.clickLevel = -1;
+   this.clickResetButton = undefined;
+   this.mousePressed = false;
+
+   this.readoutControl = undefined;
 
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
    this.graphHistType = new Array("Draw", "Fill");
    this.graphRGBHistCol = new Array("Light","Mid");
    this.graphLineCol = "Red";
+   this.graphBlockCol = "Blue";
    this.graphRef1Col = "Mid grey";
    this.graphRef2Col = "Cyan";
+   this.graphRef3Col = "Yellow";
    this.graphGridCol = "Mid grey";
    this.graphBackCol = "Dark grey";
    this.graphLineActive = true;
    this.graphRef1Active = true;
    this.graphRef2Active = true;
+   this.graphRef3Active = true;
    this.graphGridActive = true;
    this.graphBlockActive = true;
    this.blockHeight = .1;
@@ -81,6 +91,7 @@ function ControlStretchGraph()
          case "Stretch": c = this.graphLineCol; break;
          case "Reference1": c = this.graphRef1Col; break;
          case "Reference2": c = this.graphRef2Col; break;
+         case "Reference3": c = this.graphRef3Col; break;
          case "Grid": c = this.graphGridCol; break;
          case "Background": c = this.graphBackCol; break;
       }
@@ -118,6 +129,8 @@ function ControlStretchGraph()
       }
       return 0xff000000;
    }
+
+   this.rgbColourArray = [0xffff0000, 0xff00ff00, 0xff0000ff];
 
 
    //-----------------------
@@ -163,18 +176,16 @@ function ControlStretchGraph()
       }
       let stepX = (endX - startX) / gRes;
       let stepCount = Math.floor(1 / stepX);
-      let startY = Math.floor(startX / stepX);
-      let endY = Math.floor(endX / stepX);
+      let startY = 0 //Math.floor(startX / stepX);
+      //let endY = Math.floor(endX / stepX);
 
       // Plot histogram and stretched histogram
-      if ( !(this.targetView.id == "") )
+      if ( !(this.targetView.id == "") && (this.targetView.id == this.dialog.targetView.id) )
       {
-
          // get initial histogram information
          let histArrays = this.histArrays;
          let cumHistArrays = this.cumHistArrays;
          let channelCount = this.channelCount;
-         let histRes = this.views.getHistData(0)[0][0].resolution;
 
          let normFac = [0, 0, 0];
          let normStretchFac = [0, 0, 0];
@@ -192,39 +203,63 @@ function ControlStretchGraph()
 
          for (let c = 0; c < channels.length; ++c)
          {
+            let histogram = this.views.getHistData(0)[0][channels[c]];
+            let histRes = histogram.resolution;
             let histArrayc = this.views.getHistData(0)[1][channels[c]];
             let cumHistArrayc = this.views.getHistData(0)[2][channels[c]];
+            let histPeak = histArrayc.indexOf(Math.maxElem(histArrayc.slice(1, histArrayc.length - 2)));
 
             // create plot array and calculate maximum count for normalisation
             if ( histActive[0] ) {
-               let x = 0;
-               let intH = Math.floor(x * (histRes - 1));
-               let fracH = Math.frac(x * (histRes - 1));
-               let cumH0 = cumHistArrayc[intH]
-               if (intH < histRes - 1)
+               // calculate an overall maximum for normalisation
+               let overallMax = 0;
+               let peakX = (histPeak + .5) / histRes;
+
+               if ((peakX < startX) || (peakX > endX))
                {
-                  if (histArrayc[intH + 1] == undefined)
-                  {
-                     Console.writeln("histArrayc[intH + 1] == undefined");
-                     Console.writeln("histArrayc.length: ", histArrayc.length);
-                     Console.writeln("intH: ", intH);
-                     Console.writeln("this.views.getHistData(0)[0][0].resolution: ", this.views.getHistData(0)[0][0].resolution);
-                     Console.writeln("[channels[c]]: ", [channels[c]]);
-                  }
-                  cumH0 += fracH * histArrayc[intH + 1];
+                  let peakL = Math.max(0, peakX - 0.5 * stepX);
+                  let peakR = Math.min(1, peakL + stepX);
+                  peakL = peakR - stepX;
+
+                  let intH = Math.floor(peakL * histRes);
+                  let fracH = Math.frac(peakL * histRes);
+                  let cumH0 = 0
+                  if (intH > 0) {cumH0 = cumHistArrayc[intH - 1];}
+                  if (intH < histRes) {cumH0 += fracH * histArrayc[intH];}
+
+                  intH = Math.floor(peakR * histRes);
+                  fracH = Math.frac(peakR * histRes);
+                  let cumH1 = 0
+                  if (intH > 0) {cumH1 = cumHistArrayc[intH - 1];}
+                  if (intH < histRes) {cumH1 += fracH * histArrayc[intH];}
+
+                  overallMax = cumH1 - cumH0;
                }
+
+               // calculate starting values for the loop
+               let x = startX;
+               let intH = Math.floor(x * histRes);
+               let fracH = Math.frac(x * histRes);
+               let cumH0 = 0
+               if (intH > 0) {cumH0 = cumHistArrayc[intH - 1];}
+               if (intH < histRes) {cumH0 += fracH * histArrayc[intH];}
+
+               // loop to calculate values required
                let cumH1 = 0;
-               for (let i = 0; i < stepCount + 1; ++i)
+               for (let i = 0; i < hDim; ++i)
                {
-                  x = (i + 1) * stepX;
-                  intH = Math.floor(x * (histRes - 1));
-                  fracH = Math.frac(x * (histRes - 1));
-                  if (intH < histRes - 1) cumH1 = cumHistArrayc[intH] + fracH * histArrayc[intH + 1];
-                  else cumH1 = cumHistArrayc[intH];
+                  x = startX + (i + 1) * stepX;
+                  intH = Math.floor(x * histRes);
+                  fracH = Math.frac(x * histRes);
+                  if (intH > 0) {cumH1 = cumHistArrayc[intH - 1];}
+                  if (intH < histRes) {cumH1 += fracH * histArrayc[intH];}
                   histPlot[0][c][i] = cumH1 - cumH0;
                   cumH0 = cumH1;
                }
-               normFac[c] =  Math.maxElem(histPlot[0][c].slice(1, histPlot[0][c].length - 2));}
+
+               normFac[c] = Math.maxElem(histPlot[0][c].slice(1, histPlot[0][c].length - 2));
+               normFac[c] = Math.max(normFac[c], overallMax);
+               }
 
             //create stretch plot array and calculate maximum count for normalisation
             if ( histActive[1] )
@@ -234,26 +269,59 @@ function ControlStretchGraph()
 
                if (histAvailable)
                {
-                  histArrayc = this.views.getHistData(1)[1][channels[c]];
-                  cumHistArrayc = this.views.getHistData(1)[2][channels[c]];
+                  let stretchedHistArrayc = this.views.getHistData(1)[1][channels[c]];
+                  let stretchedCumHistArrayc = this.views.getHistData(1)[2][channels[c]];
+                  let stretchedHistPeak = stretchedHistArrayc.indexOf(Math.maxElem(stretchedHistArrayc.slice(1, stretchedHistArrayc.length - 2)));
+                  let stretchedHistRes = this.views.getHistData(1)[0][channels[c]].resolution;
 
-                  let x = 0;
-                  let intH = Math.floor(x * (histRes - 1));
-                  let fracH = Math.frac(x * (histRes - 1));
-                  let cumH0 = cumHistArrayc[intH]
-                  if (intH < histRes - 1) cumH0 += fracH * histArrayc[intH + 1];
-                  let cumH1 = 0;
-                  for (let i = 0; i < stepCount + 1; ++i)
+                  // calculate an overall maximum for normalisation
+                  let overallMax = 0;
+                  let peakX = (stretchedHistPeak + .5) / stretchedHistRes;
+
+                  if ((peakX < startX) || (peakX > endX))
                   {
-                     x = (i + 1) * stepX;
-                     intH = Math.floor(x * (histRes - 1));
-                     fracH = Math.frac(x * (histRes - 1));
-                     if (intH < histRes - 1) cumH1 = cumHistArrayc[intH] + fracH * histArrayc[intH + 1];
-                     else cumH1 = cumHistArrayc[intH];
+                     let peakL = Math.max(0, peakX - 0.5 * stepX);
+                     let peakR = Math.min(1, peakL + stepX);
+                     peakL = peakR - stepX;
+
+                     let intH = Math.floor(peakL * stretchedHistRes);
+                     let fracH = Math.frac(peakL * stretchedHistRes);
+                     let cumH0 = 0
+                     if (intH > 0) {cumH0 = stretchedCumHistArrayc[intH - 1];}
+                     if (intH < stretchedHistRes) {cumH0 += fracH * stretchedHistArrayc[intH];}
+
+                     intH = Math.floor(peakR * stretchedHistRes);
+                     fracH = Math.frac(peakR * stretchedHistRes);
+                     let cumH1 = 0
+                     if (intH > 0) {cumH1 = stretchedCumHistArrayc[intH - 1];}
+                     if (intH < stretchedHistRes) {cumH1 += fracH * stretchedHistArrayc[intH];}
+
+                     overallMax = cumH1 - cumH0;
+                  }
+
+                  // calculate starting values for the loop
+                  let x = startX;
+                  let intH = Math.floor(x * stretchedHistRes);
+                  let fracH = Math.frac(x * stretchedHistRes);
+                  let cumH0 = 0
+                  if (intH > 0) {cumH0 = stretchedCumHistArrayc[intH - 1];}
+                  if (intH < stretchedHistRes) {cumH0 += fracH * stretchedHistArrayc[intH];}
+
+                  // loop to calculate values required
+                  let cumH1 = 0;
+                  for (let i = 0; i < hDim; ++i)
+                  {
+                     x = startX + (i + 1) * stepX;
+                     intH = Math.floor(x * stretchedHistRes);
+                     fracH = Math.frac(x * stretchedHistRes);
+                     if (intH > 0) {cumH1 = stretchedCumHistArrayc[intH - 1];}
+                     if (intH < stretchedHistRes) {cumH1 += fracH * stretchedHistArrayc[intH];}
                      histPlot[1][c][i] = cumH1 - cumH0;
                      cumH0 = cumH1;
                   }
+
                   normStretchFac[c] = Math.maxElem(histPlot[1][c].slice(1, histPlot[1][c].length - 2));
+                  normStretchFac[c] = Math.max(normStretchFac[c], overallMax);
                }
                else if ((!maskActive) && (stretchParameters.STN() != "Image Blend"))
                {
@@ -261,15 +329,54 @@ function ControlStretchGraph()
                   if (((chNum < 3) && (c == chNum)) || (chNum >2))   //ie if this is a channel we need to stretch
                   {
                      //calculate an array holding required reversed unstretched values
-                     let unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true, channels[c], isInvertible);
-                     unstretched.push(unstretched[stepCount - 1]);
+                     let unstretched = this.stretch.calculateStretch(startX, stepX, hDim + 1, true, channels[c], isInvertible);
 
-                     if ((stretchParameters.STN() == "STF Transformation") && (!stretchParameters.linked))
+                     // calculate the overall maximum for normalisation
+                     let overallMax = 0;
+                     let peakX = (histPeak + .5) / histRes;
+                     let stretchedPeakX = this.stretch.calculateStretch(peakX, undefined, 1, false, channels[c], isInvertible);
+
+                     if ((stretchedPeakX < startX) || (stretchedPeakX > endX))
                      {
-                        unstretched = this.stretch.calculateStretch(0, stepX, stepCount + 1, true, channels[c], isInvertible);
-                        unstretched.push(unstretched[stepCount - 1]);
+                        let stretchedPeakL = Math.max(0, stretchedPeakX - 0.5 * stepX);
+                        let stretchedPeakR = Math.min(1, stretchedPeakL + stepX);
+                        stretchedPeakL = stretchedPeakR - stepX;
+                        let unstretchedPeakL = this.stretch.calculateStretch(stretchedPeakL, undefined, 1, true, channels[c], isInvertible);
+                        let unstretchedPeakR = this.stretch.calculateStretch(stretchedPeakR, undefined, 1, true, channels[c], isInvertible);
+                        let smallerValue = Math.min(unstretchedPeakL, unstretchedPeakR);
+                        unstretchedPeakR = Math.max(unstretchedPeakL, unstretchedPeakR);
+                        unstretchedPeakL = smallerValue;
+
+                        let intH = Math.floor(unstretchedPeakL * histRes);
+                        let fracH = Math.frac(unstretchedPeakL * histRes);
+                        let cumH0 = 0
+                        if (unstretchedPeakL > 1)
+                        {
+                           cumH0 = cumHistArrayc[histRes - 1];
+                        }
+                        else if (!(unstretchedPeakL < 0))
+                        {
+                           if (intH > 0) {cumH0 = cumHistArrayc[intH - 1];}
+                           if (intH < histRes) {cumH0 += fracH * histArrayc[intH];}
+                        }
+
+                        intH = Math.floor(unstretchedPeakR * histRes);
+                        fracH = Math.frac(unstretchedPeakR * histRes);
+                        let cumH1 = 0
+                        if (unstretchedPeakR > 1)
+                        {
+                           cumH1 = cumHistArrayc[histRes - 1];
+                        }
+                        else if (!(unstretchedPeakR < 0))
+                        {
+                           if (intH > 0) {cumH1 = cumHistArrayc[intH - 1];}
+                           if (intH < histRes) {cumH1 += fracH * histArrayc[intH];}
+                        }
+
+                        overallMax = cumH1 - cumH0;
                      }
 
+                     // calculate starting values for the loop
                      let cumH0 = 0;
                      let cumH1 = 0;
                      let x = unstretched[0];
@@ -279,16 +386,16 @@ function ControlStretchGraph()
                      }
                      if (!(x < 0) && !(x > 1))
                      {
-                        let intH = Math.floor(x * (histRes - 1));
-                        let fracH = Math.frac(x * (histRes - 1));
-                        cumH0 = cumHistArrayc[intH];
-                        if (intH < histRes - 1) cumH0 += fracH * histArrayc[intH + 1];
+                        let intH = Math.floor(x * histRes);
+                        let fracH = Math.frac(x * histRes);
+                        if (intH > 0) {cumH0 = cumHistArrayc[intH - 1];}
+                        if (intH < histRes) {cumH0 += fracH * histArrayc[intH];}
                      }
                      if (x > 1)
                      {
                         cumH0 = cumHistArrayc[histRes - 1];
                      }
-                     for (let i = 0; i < stepCount + 1; ++i)
+                     for (let i = 0; i < hDim; ++i)
                      {
                         x = unstretched[i + 1];
                         if (x < 0)
@@ -297,10 +404,10 @@ function ControlStretchGraph()
                         }
                         if (!(x < 0) && !(x > 1))
                         {
-                           let intH = Math.floor(x * (histRes - 1));
-                           let fracH = Math.frac(x * (histRes - 1));
-                           if (intH < histRes - 1) cumH1 = cumHistArrayc[intH] + fracH * histArrayc[intH + 1];
-                           else cumH1 = cumHistArrayc[intH];
+                           let intH = Math.floor(x * histRes);
+                           let fracH = Math.frac(x * histRes);
+                           if (intH > 0) {cumH1 = cumHistArrayc[intH - 1];}
+                           if (intH < histRes) {cumH1 += fracH * histArrayc[intH];}
                         }
                         if (x > 1)
                         {
@@ -309,11 +416,13 @@ function ControlStretchGraph()
                         histPlot[1][c][i] = Math.abs(cumH1 - cumH0);
                         cumH0 = cumH1;
                      }
+
                      normStretchFac[c] = Math.maxElem(histPlot[1][c].slice(1, histPlot[1][c].length - 2));
+                     normStretchFac[c] = Math.max(normStretchFac[c], overallMax);
                   }
                   else     // ie if this is a channel that does not need stretching
                   {
-                     for (let i = 0; i < stepCount + 1; ++i)
+                     for (let i = 0; i < hDim; ++i)
                      {
                         histPlot[1][c][i] = histPlot[0][c][i];
                      }
@@ -571,6 +680,23 @@ function ControlStretchGraph()
          g.end();
       }
 
+      // Plot reference line showing the preview readout
+      if ( (this.graphRef3Active) && (this.readoutControl != undefined) && (this.dialog.showRTP) )
+      {
+         if ((this.readoutControl.showRO) && (this.readoutControl.histogramLink))
+         {
+            let g = new VectorGraphics(this);
+            g.antialiasing = true;
+            g.pen = new Pen(this.getColour("Reference3"), this.refLineWidth);
+            let x = this.readoutControl.roAreaData[this.readoutControl.roDataIndex]
+            if ( !(x < startX) && !(x > endX) )
+            {
+               g.drawLine(hDim * (x - startX) / (endX - startX), (1 - this.blockHeight) * vDim, hDim * (x - startX) / (endX - startX), 0);
+            }
+            g.end();
+         }
+      }
+
       // Plot the stretch transformation graph
       let stretchValues = new Array();
       if (this.graphLineActive && !(stretchParameters.STN() == "Image Blend"))
@@ -580,14 +706,12 @@ function ControlStretchGraph()
 
          if ((stretchParameters.STN() == "STF Transformation") && (!stretchParameters.linked) && (this.targetView.image.isColor))
          {
-            let colourArray = [0xffff0000, 0xff00ff00, 0xff0000ff];
-
             for(let c = 0; c < 3; ++c)
             {
                if (stretchParameters.channelSelector[c] || stretchParameters.channelSelector[3])
                {
                   stretchValues = this.stretch.calculateStretch(startX, stepX, hDim + 1, false, c, isInvertible);
-                  g.pen = new Pen(colourArray[c], this.graphLineWidth);
+                  g.pen = new Pen(this.rgbColourArray[c], this.graphLineWidth);
                   let xOld = startX;
                   let yOld = (1 - stretchValues[0]) * vDim * (1 - this.blockHeight);
                   for (let i = 0; i < hDim; ++i)
@@ -636,6 +760,24 @@ function ControlStretchGraph()
             let stretchGrey = Math.floor(255 * stretchValues[i + 1]);
             let unstretchCol = Color.rgbaColor(unstretchGrey, unstretchGrey, unstretchGrey, 255);
             let stretchCol = Color.rgbaColor(stretchGrey, stretchGrey, stretchGrey, 255);
+            if (stretchParameters.channelSelector[5])
+            {
+               switch  (this.graphBlockCol)
+               {
+                  case "Red":
+                     unstretchCol = Color.rgbaColor(255, 255 - unstretchGrey, 255 - unstretchGrey, 255);
+                     stretchCol = Color.rgbaColor(255, 255 - stretchGrey, 255 - stretchGrey, 255);
+                     break;
+                  case "Green":
+                     unstretchCol = Color.rgbaColor(255 - unstretchGrey, 255, 255 - unstretchGrey, 255);
+                     stretchCol = Color.rgbaColor(255 - stretchGrey, 255, 255 - stretchGrey, 255);
+                     break;
+                  case "Blue":
+                     unstretchCol = Color.rgbaColor(255 - unstretchGrey, 255 - unstretchGrey, 255, 255);
+                     stretchCol = Color.rgbaColor(255 - stretchGrey, 255 - stretchGrey, 255, 255);
+                     break;
+               }
+            }
             let x = (i + 1);
             let y0 = (1.0 - this.blockHeight) * vDim;
             let y1 = (1.0 - 0.5 * this.blockHeight) * vDim;
@@ -687,14 +829,16 @@ function ControlStretchGraph()
       }
 
       this.isBusy = false;
+      this.runCount += 1;
    }
 
-   //----------------------------
-   // graph mouse click  function|
-   //----------------------------
+   //----------------------
+   // mouse press  function|
+   //----------------------
 
    this.onMousePress = function(x, y, button, buttonState, modifiers)
    {
+      this.mousePressed = true;
       var p  = x / this.width;
       var currentMidValue = this.graphMidValue;
       var currentRange = this.graphRange;
@@ -703,12 +847,47 @@ function ControlStretchGraph()
       if (currentMinValue < 0.0) currentMinValue = 0.0;
       if (currentMaxValue > 1.0) currentMinValue = 1.0 - currentRange;
       this.clickLevel = currentMinValue + p  * currentRange;
+
+      if (!(this.clickResetButton == undefined)) this.clickResetButton.updateParamValue();
+
       this.dialog.updateControls();
    }
 
-   //----------------------------------
-   // graph mouse double click function|
-   //----------------------------------
+   //---------------------
+   // mouse move  function|
+   //---------------------
+
+   this.onMouseMove = function(x, y, buttonState, modifiers)
+   {
+      if (this.mousePressed)
+      {
+         var p  = Math.max(0, Math.min(1, x / this.width));
+         var currentMidValue = this.graphMidValue;
+         var currentRange = this.graphRange;
+         var currentMinValue = currentMidValue - 0.5 * currentRange;
+         var currentMaxValue = currentMidValue + 0.5 * currentRange;
+         if (currentMinValue < 0.0) currentMinValue = 0.0;
+         if (currentMaxValue > 1.0) currentMinValue = 1.0 - currentRange;
+         this.clickLevel = currentMinValue + p  * currentRange;
+
+         if (this.clickResetButton != undefined) this.clickResetButton.updateParamValue();
+
+         this.dialog.updateControls();
+      }
+   }
+
+   //------------------------
+   // mouse release  function|
+   //------------------------
+
+   this.onMouseRelease = function(x, y, button, buttonState, modifiers)
+   {
+      this.mousePressed = false;
+   }
+
+   //----------------------------
+   // mouse double click function|
+   //----------------------------
 
    this.onMouseDoubleClick = function(x, y, button, buttonState, modifiers)
    {   // Centre the pan control at the click point
@@ -720,7 +899,7 @@ function ControlStretchGraph()
       if (currentMinValue < 0.0) currentMinValue = 0.0;
       if (currentMaxValue > 1.0) currentMinValue = 1.0 - currentRange;
       var newMidValue = currentMinValue + p  * currentRange;
-      this.dialog.panControl.setValue(newMidValue);
+      this.dialog.panSlider.value = 100 * newMidValue;
       this.graphMidValue = newMidValue;
       this.dialog.updateControls();
    }
