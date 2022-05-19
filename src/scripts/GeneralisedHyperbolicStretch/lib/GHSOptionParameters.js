@@ -4,7 +4,7 @@
  *
  * OPTION PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -40,7 +40,9 @@ function GHSOptionParameters() {
    this.selectNewImage = true;
    this.saveLogCheck = true;
    this.startupRTP = true;
+   this.paramHistLink = false;
    this.zoomMax = 200;
+   this.readoutAreaMax = 256;
    this.graphHistActive = new Array(true, true);
    this.graphHistCol = new Array("Light grey", "Mid grey");
    this.graphHistType = new Array("Draw", "Fill");
@@ -48,12 +50,15 @@ function GHSOptionParameters() {
    this.graphLineCol = "Red";
    this.graphRef1Col = "Mid grey";
    this.graphRef2Col = "Cyan";
+   this.graphRef3Col = "Yellow";
    this.graphGridCol = "Mid grey";
    this.graphBackCol = "Dark grey";
    this.graphLineActive = true;
    this.graphBlockActive = true;
+   this.graphBlockCol = "Blue";
    this.graphRef1Active = true;
    this.graphRef2Active = true;
+   this.graphRef3Active = true;
    this.graphGridActive = true;
    this.previewWidth = 800;
    this.previewHeight = 600;
@@ -75,7 +80,9 @@ function GHSOptionParameters() {
       returnValue.selectNewImage = this.selectNewImage;
       returnValue.saveLogCheck = this.saveLogCheck;
       returnValue.startupRTP = this.startupRTP;
+      returnValue.paramHistLink = this.paramHistLink;
       returnValue.zoomMax = this.zoomMax;
+      returnValue.readoutAreaMax = this.readoutAreaMax;
 
       returnValue.graphHistActive = new Array();
       returnValue.graphHistActive.push(this.graphHistActive[0]);
@@ -97,11 +104,14 @@ function GHSOptionParameters() {
       returnValue.graphBlockActive = this.graphBlockActive;
       returnValue.graphRef1Active = this.graphRef1Active;
       returnValue.graphRef2Active = this.graphRef2Active;
+      returnValue.graphRef3Active = this.graphRef3Active;
       returnValue.graphGridActive = this.graphGridActive;
 
       returnValue.graphLineCol = this.graphLineCol;
+      returnValue.graphBlockCol = this.graphBlockCol;
       returnValue.graphRef1Col = this.graphRef1Col;
       returnValue.graphRef2Col = this.graphRef2Col;
+      returnValue.graphRef3Col = this.graphRef3Col;
       returnValue.graphGridCol = this.graphGridCol;
       returnValue.graphBackCol = this.graphBackCol;
 
@@ -129,7 +139,9 @@ function GHSOptionParameters() {
       this.selectNewImage = ghsOP.selectNewImage;
       this.saveLogCheck = ghsOP.saveLogCheck;
       this.startupRTP = ghsOP.startupRTP;
+      this.paramHistLink = ghsOP.paramHistLink;
       this.zoomMax = ghsOP.zoomMax;
+      this.readoutAreaMax = ghsOP.readoutAreaMax;
 
       this.graphHistActive = ghsOP.graphHistActive;
       this.graphHistCol = ghsOP.graphHistCol;
@@ -140,11 +152,14 @@ function GHSOptionParameters() {
       this.graphBlockActive = ghsOP.graphBlockActive;
       this.graphRef1Active = ghsOP.graphRef1Active;
       this.graphRef2Active = ghsOP.graphRef2Active;
+      this.graphRef3Active = ghsOP.graphRef3Active;
       this.graphGridActive = ghsOP.graphGridActive;
 
       this.graphLineCol = ghsOP.graphLineCol;
+      this.graphBlockCol = ghsOP.graphBlockCol;
       this.graphRef1Col = ghsOP.graphRef1Col;
       this.graphRef2Col = ghsOP.graphRef2Col;
+      this.graphRef3Col = ghsOP.graphRef3Col;
       this.graphGridCol = ghsOP.graphGridCol;
       this.graphBackCol = ghsOP.graphBackCol;
 
@@ -177,6 +192,7 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/selectNewImage", 0, this.selectNewImage);
       Settings.write(KEYPREFIX + "/saveLogCheck", 0, this.saveLogCheck);
       Settings.write(KEYPREFIX + "/startupRTP", 0, this.startupRTP);
+      Settings.write(KEYPREFIX + "/paramHistLink", 0, this.paramHistLink);
       Settings.write(KEYPREFIX + "/graphHistActive", 0, this.graphHistActive[0]);
       Settings.write(KEYPREFIX + "/graphStretchHistActive", 0, this.graphHistActive[1]);
       Settings.write(KEYPREFIX + "/graphHistCol", 13, this.graphHistCol[0]);
@@ -186,19 +202,23 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/graphHistType", 13, this.graphHistType[0]);
       Settings.write(KEYPREFIX + "/graphStretchHistType", 13, this.graphHistType[1]);
       Settings.write(KEYPREFIX + "/graphLineCol", 13, this.graphLineCol);
+      Settings.write(KEYPREFIX + "/graphBlockCol", 13, this.graphBlockCol);
       Settings.write(KEYPREFIX + "/graphRef1Col", 13, this.graphRef1Col);
       Settings.write(KEYPREFIX + "/graphRef2Col", 13, this.graphRef2Col);
+      Settings.write(KEYPREFIX + "/graphRef3Col", 13, this.graphRef3Col);
       Settings.write(KEYPREFIX + "/graphGridCol", 13, this.graphGridCol);
       Settings.write(KEYPREFIX + "/graphBackCol", 13, this.graphBackCol);
       Settings.write(KEYPREFIX + "/graphLineActive", 0, this.graphLineActive);
       Settings.write(KEYPREFIX + "/graphBlockActive", 0, this.graphBlockActive);
       Settings.write(KEYPREFIX + "/graphRef1Active", 0, this.graphRef1Active);
       Settings.write(KEYPREFIX + "/graphRef2Active", 0, this.graphRef2Active);
+      Settings.write(KEYPREFIX + "/graphRef3Active", 0, this.graphRef3Active);
       Settings.write(KEYPREFIX + "/graphGridActive", 0, this.graphGridActive);
       Settings.write(KEYPREFIX + "/previewWidth", 5, this.previewWidth);
       Settings.write(KEYPREFIX + "/previewHeight", 5, this.previewHeight);
       Settings.write(KEYPREFIX + "/previewDelay", 9, this.previewDelay);
       Settings.write(KEYPREFIX + "/zoomMax", 5, this.zoomMax);
+      Settings.write(KEYPREFIX + "/readoutAreaMax", 5, this.readoutAreaMax);
       Settings.write(KEYPREFIX + "/previewCrossColour", 13, this.previewCrossColour);
       Settings.write(KEYPREFIX + "/previewCrossActive", 0, this.previewCrossActive);
       Settings.write(KEYPREFIX + "/lumCoeffSource", 13, this.lumCoeffSource);
@@ -231,6 +251,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.saveLogCheck = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/startupRTP", 0);
       if (Settings.lastReadOK) this.startupRTP = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/paramHistLink", 0);
+      if (Settings.lastReadOK) this.paramHistLink = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphHistActive", 0);
       if (Settings.lastReadOK) this.graphHistActive[0] = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphStretchHistActive", 0);
@@ -249,10 +271,14 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.graphHistType[1] = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphLineCol", 13);
       if (Settings.lastReadOK) this.graphLineCol = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/graphBlockCol", 13);
+      if (Settings.lastReadOK) this.graphBlockCol = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef1Col", 13);
       if (Settings.lastReadOK) this.graphRef1Col = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef2Col", 13);
       if (Settings.lastReadOK) this.graphRef2Col = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/graphRef3Col", 13);
+      if (Settings.lastReadOK) this.graphRef3Col = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphGridCol", 13);
       if (Settings.lastReadOK) this.graphGridCol = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphBackCol", 13);
@@ -265,6 +291,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.graphRef1Active = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphRef2Active", 0);
       if (Settings.lastReadOK) this.graphRef2Active = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/graphRef3Active", 0);
+      if (Settings.lastReadOK) this.graphRef3Active = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphGridActive", 0);
       if (Settings.lastReadOK) this.graphGridActive = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewWidth", 5);
@@ -275,6 +303,8 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.previewDelay = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/zoomMax", 5);
       if (Settings.lastReadOK) this.zoomMax = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/readoutAreaMax", 5);
+      if (Settings.lastReadOK) this.readoutAreaMax = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewCrossColour", 13);
       if (Settings.lastReadOK) this.previewCrossColour = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/previewCrossActive", 0);
