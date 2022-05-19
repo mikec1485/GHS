@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -56,16 +56,45 @@ function GHSStretch()
 
    var a1, b1, a2, b2, c2, d2, e2, a3, b3, c3, d3, e3, a4, b4;
 
-   var stfArray = new Array;
+   var stfArrays = undefined;
    var stfIsColour = false;
+
+   this.setSTF = function(view)
+   {
+      stfArrays = [new Array(), new Array()];
+
+      if ((view == undefined) || (view.id == ""))
+      {
+         stfArrays[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+
+         stfArrays[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+         stfArrays[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+
+         stfIsColour = false;
+      }
+      else
+      {
+         stfArrays = getAutoSTFH(view);
+         stfIsColour = view.image.isColor;
+      }
+      this.lastStretchKey = this.stretchParameters.getStretchKey();
+   }
 
    this.isBusy = false;
 
-   var lastStretchKey = "";
+   this.lastStretchKey = "";
 
    this.needsRecalc = function()
    {
-      return ((lastStretchKey != this.stretchParameters.getStretchKey()) || (this.stretchParameters.STN() == "STF Transformation"));
+      let returnValue = (this.lastStretchKey != this.stretchParameters.getStretchKey());
+      return returnValue;
    }
 
    this.recalcIfNeeded = function(view)
@@ -107,11 +136,14 @@ function GHSStretch()
          let c = channel;
          if ( (linked) || (!stfIsColour) ) c = 3;
 
+         let l = 0;
+         if (linked || (!stfIsColour)) l = 1;
+
          if (!spInv)
          {
-            var c0 = stfArray[c][0];
-            var m = stfArray[c][1];
-            var c1 = stfArray[c][2];
+            var c0 = stfArrays[l][c][0];
+            var m = stfArrays[l][c][1];
+            var c1 = stfArrays[l][c][2];
             var d = (1.0 / (c1 - c0));
 
             let returnValues = new Array();
@@ -120,7 +152,6 @@ function GHSStretch()
                let z = x + i * stepx;
                returnValues.push(Math.mtf(m, (z - c0) / (c1 - c0)));
             }
-
             if (runMode == "value") return returnValues[0];
             else return returnValues;
          }
@@ -130,9 +161,9 @@ function GHSStretch()
             //this section of code is included as it is used in the graphical dispaly
             //where appropriate adjustments/allowances are made.
             let returnValues = new Array();
-            var c0 = stfArray[c][0];
-            var m = stfArray[c][1];
-            var c1 = stfArray[c][2];
+            var c0 = stfArrays[l][c][0];
+            var m = stfArrays[l][c][1];
+            var c1 = stfArrays[l][c][2];
             var d = (1.0 / (c1 - c0));
 
             for (let i = 0; i < stepCount; ++i)
@@ -525,13 +556,17 @@ function GHSStretch()
       if (STN == "STF Transformation")
       {
 
-         var expr = new Array
+         var expr = new Array;
+         let linked = this.stretchParameters.linked;
+
+         let l = 0;
+         if (linked || (!stfIsColour)) l = 1;
 
          let c = channel
          if ( (linked) || (!stfIsColour) ) {c = 3;}
-         var c0 = stfArray[c][0];
-         var m = stfArray[c][1];
-         var c1 = stfArray[c][2];
+         var c0 = stfArrays[l][c][0];
+         var m = stfArrays[l][c][1];
+         var c1 = stfArrays[l][c][2];
          var d = (1.0 / (c1 - c0));
          expr.push("mtf(" + m.toString() + ",(x-" + c0.toString() + ")*" + d.toString() + ")");
 
@@ -827,19 +862,7 @@ function GHSStretch()
       //----------------------------------------------
       if (STN == "STF Transformation")
       {
-         stfArray = new Array;
-         stfArray.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-         stfArray.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-         stfArray.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-         stfArray.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-         stfArray.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-         stfIsColour = false;
-
-         if (view != undefined && view.id != "")
-         {
-            stfArray = getAutoSTFH(view, this.stretchParameters.linked);
-            stfIsColour = view.image.isColor;
-         }
+         this.setSTF(view);
       }
 
       //-------------------------------------
@@ -1080,7 +1103,7 @@ function GHSStretch()
       wkgViewWindow.rgbWorkingSpace = new RGBColorSystem(view.window.rgbWorkingSpace);
 
       let wkgView = wkgViewWindow.mainView;
-      wkgView.beginProcess(UndoFlag_NoSwapFile)
+      wkgView.beginProcess(UndoFlag_NoSwapFile);
       wkgView.image.apply(img);
       wkgView.endProcess();
 
@@ -1142,7 +1165,6 @@ function GHSStretch()
          expr3 += "; iif(max == min, $T, max * (1 - s * (max - $T) / (max - min)));";
 
          let symb = "max, min, s, " + stretch[1];
-         Console.writeln(symb);
 
          wkgView = this.applyPixelMath(wkgView, ["", "", "", expr3, symb], "", false);
 
@@ -1245,7 +1267,7 @@ function GHSStretch()
       if (stretchExpression[4] != undefined)
       {
          P.symbols = stretchExpression[4];
-         Console.writeln(P.symbols);
+         Console.writeln("Symbols: ", P.symbols);
       }
 
       if (newImageId == "")

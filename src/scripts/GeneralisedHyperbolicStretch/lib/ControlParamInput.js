@@ -4,7 +4,7 @@
  *
  * PARAMETER INPUT CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -26,7 +26,7 @@
 // ----------------------------------------------------------------------------
 
 
-function ControlParamInput(value, min, max, precision, text, minWidth)
+function ControlParamInput(value, min, max, precision, text, minWidth, stretchGraphLink)
 {
    this.__base__ = Control;
    this.__base__();
@@ -39,15 +39,54 @@ function ControlParamInput(value, min, max, precision, text, minWidth)
    this.numControl.slider.setRange( 0, Math.pow10(precision) );
    this.numControl.setValue(value);
 
-   // create D reset button
+   // create reset button
    this.resetButton = new ToolButton(this);
    this.resetButton.icon = this.scaledResource( ":/icons/clear.png" );
    this.resetButton.setScaledFixedSize( 24, 24 );
 
-   // layout D controls
+   // layout controls
    this.sizer = new HorizontalSizer( this )
    this.sizer.spacing = 4;
    this.sizer.add(this.numControl);
+
+   // set up logic to link with the histogram
+   if (stretchGraphLink != undefined)
+   {
+      // create histogram link button
+      this.histLinkButton = new ToolButton(this);
+      this.histLinkButton.icon = this.scaledResource( ":/icons/clear-inverted.png" );
+      this.histLinkButton.setScaledFixedSize( 24, 24 );
+      this.sizer.add(this.histLinkButton);
+
+      this.histLinkButton.stretchGraph = stretchGraphLink;
+      this.histLinkButton.toolTip = "<p><b>Histogram link</b> Clicking this button will transfer the histogram readout value " +
+            "to this parameter. Shift-click will link the histogram readout value to this parameter, until released " +
+            "by clicking this button. Changing transformation type will also release the link.</p>";
+      this.histLinkButton.onMousePress = function(x, y, button, buttonState, modifiers)
+      {
+         if (this === this.stretchGraph.clickResetButton)
+         {
+            if (modifiers != KeyModifier_Shift)
+            {
+               this.stretchGraph.clickResetButton = undefined;
+            }
+         }
+         else
+         {
+            if (modifiers == KeyModifier_Shift)
+            {
+               this.stretchGraph.clickResetButton = this;
+            }
+            else
+            {
+               this.stretchGraph.clickResetButton = undefined;
+               this.updateParamValue();
+            }
+         }
+         this.dialog.updateControls();
+      }
+   }
+
    this.sizer.add(this.resetButton);
 
 }

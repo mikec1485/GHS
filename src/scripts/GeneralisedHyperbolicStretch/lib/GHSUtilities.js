@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.1.0
+ * Version 2.2.0
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -130,7 +130,7 @@ function getSizedFont(control, string, lines = 1)
 // Pixinsight standard STF approach - calculation of histogram transformation matrix|
 //----------------------------------------------------------------------------------
 
-function getAutoSTFH(view, linked = false)
+function getAutoSTFH(view, linked)
 {
    // set up and initialise variables
    var shadowsClipping = -2.8;
@@ -147,7 +147,7 @@ function getAutoSTFH(view, linked = false)
    var lnkC0 = 0.0;
    var lnkC1 = 0.0;
    var lnkM = 0.0;
-   var histTransform = new Array;
+   var histTransforms = [new Array(), new Array()];
 
    var medians = new Vector(3);
    var mads = new Vector(3);
@@ -206,37 +206,34 @@ function getAutoSTFH(view, linked = false)
       lnkM = Math.sum(m) / channelCount;
    }
 
-   // generate the histogram transformation
-   if (linked || (channelCount == 1))
+   // generate unlinked histogram transformation
+   if (allInverted)
    {
-
-      histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-      histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-      histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);
-      histTransform.push([lnkC0, lnkM, lnkC1, 0.0, 1.0]);
-      histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);
+      for (var row = 0; row < 5; ++row)
+      {
+         if (row < channelCount) {histTransforms[0].push([invC0[row], invM[row], invC1[row], 0.0, 1.0]);}
+         else{histTransforms[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);}
+      }
    }
    else
    {
-      if (allInverted)
+      for (var row = 0; row < 5; ++row)
       {
-         for (var row = 0; row < 5; ++row)
-         {
-            if (row < channelCount) {histTransform.push([invC0[row], invM[row], invC1[row], 0.0, 1.0]);}
-            else{histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);}
-         }
-      }
-      else
-      {
-         for (var row = 0; row < 5; ++row)
-         {
-            if (row < channelCount) {histTransform.push([c0[row], m[row], c1[row], 0.0, 1.0]);}
-            else{histTransform.push([0.0, 0.5, 1.0, 0.0, 1.0]);}
-         }
+         if (row < channelCount) {histTransforms[0].push([c0[row], m[row], c1[row], 0.0, 1.0]);}
+         else{histTransforms[0].push([0.0, 0.5, 1.0, 0.0, 1.0]);}
       }
    }
 
-   return histTransform;
+   // generate linked histogram transformation
+   histTransforms[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+   histTransforms[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+   histTransforms[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+   histTransforms[1].push([lnkC0, lnkM, lnkC1, 0.0, 1.0]);
+   histTransforms[1].push([0.0, 0.5, 1.0, 0.0, 1.0]);
+
+   if (linked == undefined) {return histTransforms;}
+   if (linked || (channelCount == 1)) {return histTransforms[1];}
+   else {return histTransforms[0];}
 }
 
 //----------------------------------------------------------------------------
@@ -258,7 +255,7 @@ function generatePixelMathAutoSTF(view, linked = false)
       expr.push("");
       expr.push("");
       expr.push("");
-      expr.push("mtf(" + m.toFixed(12) + ",($T-" + c0.toFixed(12) + ")*" + d.toFixed(12) + ")");
+      expr.push("mtf(" + m.toString() + ",($T-" + c0.toString() + ")*" + d.toString() + ")");
    }
    else
    {
@@ -268,7 +265,7 @@ function generatePixelMathAutoSTF(view, linked = false)
          var m = H[i][1];
          var c1 = H[i][2];
          var d = (1.0 / (c1 - c0));
-         expr.push("mtf(" + m.toFixed(12) + ",($T-" + c0.toFixed(12) + ")*" + d.toFixed(12) + ")");
+         expr.push("mtf(" + m.toString() + ",($T-" + c0.toString() + ")*" + d.toString() + ")");
       }
       expr.push("");
    }
