@@ -1,9 +1,10 @@
- /*
+
+/*
  ****************************************************************************
  * GeneralisedHyperbolicStretch Utility
  *
  * GeneralisedHyperbolicStretch.js
- * Copyright (C) 2021, Mike Cranfield
+ * Copyright (C) 2021, 2022, Mike Cranfield
  *
  * This script provides an environment within which to define, appraise and apply
  * a variety of different stretches to an image.  The stretches include a family
@@ -13,16 +14,16 @@
  * Script coding by Mike Cranfield.
  * Equations and documentation by Dave Payne.
  *
- * If you wish to contact either of us please do so
- * via the Pixinsight Forums (https://pixinsight.com/forum/).
+ * If you wish to contact us you can do so by email at contact@ghsastro.co.uk.
  *
  * This product is based on software from the PixInsight project, developed
  * by Pleiades Astrophoto and its contributors (https://pixinsight.com/).
  *
  * Version history
  * 1.0     2021-12-09 first release v1
- * 2.0.0   2022-03-06 first release v2
- * 2.1.0   2022-04-02
+ * 2.0.0   2022-03-06 first release v2 with preview
+ * 2.1.0   2022-04-02 miscellaneous updates
+ * 2.2.0   2022-05-19 image enquiry added to preview
  *
  *
  ****************************************************************************
@@ -51,7 +52,7 @@ known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.1.0"
+#define VERSION "2.2.0"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>
