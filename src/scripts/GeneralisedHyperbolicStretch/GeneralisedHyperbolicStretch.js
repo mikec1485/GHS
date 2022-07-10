@@ -24,6 +24,7 @@
  * 2.0.0   2022-03-06 first release v2 with preview
  * 2.1.0   2022-04-02 miscellaneous updates
  * 2.2.0   2022-05-19 image enquiry added to preview
+ * 2.2.1   2022-07-10 workaround for colour space change bug
  *
  *
  ****************************************************************************
@@ -52,7 +53,7 @@ known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.2.0"
+#define VERSION "2.2.1"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>

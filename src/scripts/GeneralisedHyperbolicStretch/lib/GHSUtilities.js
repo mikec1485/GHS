@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.0
+ * Version 2.2.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -290,23 +290,21 @@ function calculateHistograms(view, lumCoefficients)
       for (let c = 0; c < channelCount; ++c)
       {
          view.beginProcess(UndoFlag_NoSwapFile);
+         let tempImg = new Image(view.image);
 
-         let cs = view.image.colorSpace
-         let channel = c;
-         if (c == 3) {  //Lightness
-            view.image.colorSpace = ColorSpace_CIELab;
-            view.image.selectedChannel = 0;
-            }
          if (c == 4) {  //Saturation
-            view.image.colorSpace = ColorSpace_HSV;
-            view.image.selectedChannel = 1;
+            tempImg.colorSpace = ColorSpace_HSV;
+            tempImg.selectedChannel = 1;
+            }
+         if (c == 3) {  //Lightness
+            tempImg.colorSpace = ColorSpace_CIELab;
+            tempImg.selectedChannel = 0;
             }
          if (c < 3) {
-            view.image.selectedChannel = c;}
-         histograms[c].generate( view.image );
-         view.image.colorSpace = cs;
-         view.image.resetChannelSelection();
+            tempImg.selectedChannel = c;}
+         histograms[c].generate( tempImg );
 
+         tempImg.free();
          view.endProcess();
 
          histArrays[c] = histograms[c].toArray();
