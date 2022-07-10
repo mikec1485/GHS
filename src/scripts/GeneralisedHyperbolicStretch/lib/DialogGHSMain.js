@@ -4,7 +4,7 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.0
+ * Version 2.2.1
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -1745,7 +1745,6 @@ this.previewRefresh = function()
 
 this.newImageRefresh = function()
 {
-
    let timerWasRunning = this.previewTimer.isRunning;
    this.previewTimer.stop();
    this.enabled = false;
@@ -1789,10 +1788,10 @@ this.newImageRefresh = function()
       ghsStretch.setSTF(this.targetView)
       this.stretchGraph.targetView = this.targetView;
 
-
       Console.writeln("Initialising preview");
       this.imagePreview.invalidPreview = true;
       this.imagePreview.setImage(this.targetView);
+
    }
    else
    {
