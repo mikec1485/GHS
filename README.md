@@ -1,5 +1,5 @@
 # GHS
-Generalised Hyperbolic Stretch Version 2.2.1
+Generalised Hyperbolic Stretch Version 2.2.2
 
 This script is designed to run within the Pixinsight Javascript Runtime environment.
 
