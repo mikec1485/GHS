@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.1
+ * Version 2.2.2
  *
  * Copyright (C) 2022  Mike Cranfield
  *

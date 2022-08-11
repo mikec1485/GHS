@@ -4,7 +4,7 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.1
+ * Version 2.2.2
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -1919,8 +1919,12 @@ this.newImageRefresh = function()
 
          if (this.targetView.id != "")
          {
-            this.LCPControl.numControl.setValue(normCount(stretchParameters.BP, this.channels(), "max", ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]));
-            this.HCPControl.numControl.setValue(1 - normCount(stretchParameters.WP, this.channels(), "max", ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]));
+            let channels = this.channels();
+            if (stretchParameters.channelSelector[0]) channels = [0];
+            if (stretchParameters.channelSelector[1]) channels = [1];
+            if (stretchParameters.channelSelector[2]) channels = [2];
+            this.LCPControl.numControl.setValue(normCount(stretchParameters.BP, channels, "max", ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]));
+            this.HCPControl.numControl.setValue(1 - normCount(stretchParameters.WP, channels, "max", ghsViews.getHistData(0)[0], ghsViews.getHistData(0)[2]));
          }
          else
          {
