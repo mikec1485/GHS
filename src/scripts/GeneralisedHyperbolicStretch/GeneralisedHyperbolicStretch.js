@@ -25,6 +25,7 @@
  * 2.1.0   2022-04-02 miscellaneous updates
  * 2.2.0   2022-05-19 image enquiry added to preview
  * 2.2.1   2022-07-10 workaround for colour space change bug
+ * 2.2.2   2022-08-10 corrected LCP and HCP calculations for single colour channel stretches
  *
  *
  ****************************************************************************
@@ -53,7 +54,7 @@ known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.2.1"
+#define VERSION "2.2.2"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>

@@ -4,7 +4,7 @@
  *
  * OPTION PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.1
+ * Version 2.2.2
  *
  * Copyright (C) 2022  Mike Cranfield
  *
