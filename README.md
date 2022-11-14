@@ -1,5 +1,5 @@
 # GHS
-Generalised Hyperbolic Stretch Version 2.2.2
+Generalised Hyperbolic Stretch Version 2.2.4
 
 This script is designed to run within the Pixinsight Javascript Runtime environment.
 
@@ -12,3 +12,5 @@ A comprehensive walkthrough primer is also available as well as direct access fr
 It can most easily be installed by adding the following repository information in Pixinsight Resources>Updates>Manage Repositories: https://www.ghsastro.co.uk/updates/.  The most up to date version will then be downloaded and installed in the usual way of Pixinsight updates when you next start up Pixinsight.
 
 The script can alternatively be installed using the Scripts>Feature scripts... menu option in Pixinsight. The subdirectory containing the html documentation and images subdirectory should be copied to the Pixinsight program file installation.  It should be placed as a subdirectory of the Pixinsight>doc>scripts directory.  
+
+Version 2.2.4 has been adapted to use the GHS process module where this is available in the users PixInsight installation.  Source code for the GHS process module is avaolable from the GHS-module repository.
