@@ -4,7 +4,7 @@
  *
  * OPTIONS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -158,6 +158,28 @@ function DialogOptions(optionParameters) {
    this.paramHistLinkCheck.onCheck = function( checked )
    {
       optionParameters.paramHistLink = checked;
+   }
+
+   // create "supress module notice" checkbox
+   this.supressModuleNoticeCheck = new CheckBox( this );
+   this.supressModuleNoticeCheck.text = "Don't show Process module notice";
+   this.supressModuleNoticeCheck.checked = optionParameters.supressModuleNotice;
+   this.supressModuleNoticeCheck.toolTip =
+         "<p>When checked the notice relating to the GHS module will not be shown at start up.</p>";
+   this.supressModuleNoticeCheck.onCheck = function( checked )
+   {
+      optionParameters.supressModuleNotice = checked;
+   }
+
+   // create use process checkbox
+   this.useProcessCheck = new CheckBox( this );
+   this.useProcessCheck.text = "Use Process module if possible";
+   this.useProcessCheck.checked = optionParameters.useProcess;
+   this.useProcessCheck.toolTip =
+         "<p>If possible use the GHS process module, ie if the process module is installed and the transformation type is available as an option.</p>";
+   this.useProcessCheck.onCheck = function( checked )
+   {
+      optionParameters.useProcess = checked;
    }
 
    // create preview width input
@@ -853,6 +875,8 @@ function DialogOptions(optionParameters) {
       this.saveLogCheck.checked = optionParameters.saveLogCheck;
       this.startupRTPCheck.checked = optionParameters.startupRTP;
       this.paramHistLinkCheck.checked = optionParameters.paramHistLink;
+      this.supressModuleNoticeCheck = optionParameters.supressModuleNoticeCheck;
+      this.useProcessCheck = optionParameters.useProcess;
       this.zoomMaxNum.setValue(optionParameters.zoomMax);
       this.roaMaxNum.setValue(optionParameters.readoutAreaMax);
       this.previewWidthNum.setValue(optionParameters.previewWidth);
@@ -908,7 +932,12 @@ function DialogOptions(optionParameters) {
    this.optionPickerLeft.add(this.selectNewImage);
    this.optionPickerLeft.addSpacing(layoutSpacing);
    this.optionPickerLeft.add(this.startupRTPCheck);
+   this.optionPickerLeft.addSpacing(layoutSpacing);
    this.optionPickerLeft.add(this.paramHistLinkCheck);
+   this.optionPickerLeft.addSpacing(layoutSpacing);
+   this.optionPickerLeft.add(this.supressModuleNoticeCheck);
+   this.optionPickerLeft.addSpacing(layoutSpacing);
+   this.optionPickerLeft.add(this.useProcessCheck);
 
    this.optionPickerRight = new VerticalSizer( this )
    this.optionPickerRight.margin = 0;

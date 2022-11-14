@@ -4,7 +4,7 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -28,6 +28,7 @@
 #include "DialogOptions.js"
 #include "DialogLog.js"
 #include "DialogInspector.js"
+#include "DialogModuleNotice.js"
 
 #include "ControlHistData.js"
 #include "ControlPreview.js"
@@ -101,6 +102,18 @@ function DialogGHSMain() {
    this.onHide = function()
    {
       this.previewTimer.stop();
+   }
+
+   //-----------------------------------
+   // Ensure smooth exit from the dialog|
+   //-----------------------------------
+   this.onGetFocus = function()
+   {
+      if (!optionParameters.supressModuleNotice)
+      {
+         let dialog = new DialogModuleNotice(optionParameters);
+         let dialogReturn = dialog.execute();
+      }
    }
 
 /*******************************************************************************
@@ -1276,10 +1289,8 @@ function DialogGHSMain() {
 */
 
    this.combinePercentControl = new ControlParamInput(stretchParameters.combinePercent, 0, 100, 2, stretchParameters.name_combinePercent, minLabelWidth);
-   this.combinePercentControl.numControl.toolTip = "<p>Controls the amount of stretch. D is a variable that independently controls the contrast added (the slope of " +
-      "the stretch transform) at SP, thus adjusting the amount of stretch applied to the rest of the image.  D does not change the 'form' of " +
-      "the stretch, simply the amount.  D should be used in tandem with b to control the distribution of contrast and brightness. When D is set " +
-      "to zero, the stretch transform will be the identity (y=x) or 'no stretch' transform.</p>";
+   this.combinePercentControl.numControl.toolTip = "<p>Controls the blending percentage. A value of x will take x% of the target image " +
+      "plus (100-x)% of the blend image.</p>";
    this.combinePercentControl.numControl.onValueUpdated = function( value )
    {
       stretchParameters.combinePercent = value;
@@ -1881,6 +1892,8 @@ this.newImageRefresh = function()
          this.stretchGraph.clickResetButton = undefined;
          for (let i = 0; i < this.linkableInputs.length; ++i) {this.linkableInputs[i].histLinkButton.hide();}
       }
+
+      ghsStretch.useProcess = ghsOP.useProcess;
    }
 
 /*******************************************************************************
@@ -2522,7 +2535,6 @@ this.newImageRefresh = function()
    this.defaultButton = new PushButton( this );
    this.defaultButton.defaultButton = true;
    this.defaultButton.hide();
-
 
 }
 

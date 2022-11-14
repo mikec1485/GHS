@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -24,6 +24,50 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
+
+
+function checkForModule()
+{
+   //return values are:
+   // -1: operating system not recognised
+   //  0: no GHS module file found
+   //  1: GHS module file found and installed
+   //  2: GHS module file found but not installed
+
+   let moduleFileName = CoreApplication.binDirPath;
+   if (!moduleFileName.endsWith("/")) moduleFileName += "/";
+
+   switch (CoreApplication.platform)
+   {
+      case "MacOSX":
+         moduleFileName += "GeneralizedHyperbolicStretch-pxm.dylib";
+         break;
+      case "MSWindows":
+         moduleFileName += "GeneralizedHyperbolicStretch-pxm.dll";
+         break;
+      case "Linux":
+         moduleFileName += "GeneralizedHyperbolicStretch-pxm.so";
+         break;
+      default:
+         return -1;
+   }
+
+   let moduleFileInfo = new FileInfo( moduleFileName );
+
+   if (!moduleFileInfo.exists) return 0;
+
+   let returnValue = 1;
+   try
+   {
+      let tryGHS = new GeneralizedHyperbolicStretch();
+   }
+   catch(err)
+   {
+      returnValue = 2;
+   }
+
+   return returnValue;
+}
 
 
 function normCount(normLevel, channels, minOrMax, histograms, cumHistArrays)

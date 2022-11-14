@@ -4,7 +4,7 @@
  *
  * VIEWS OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -190,7 +190,7 @@ function GHSViews(view){
          {
             if (this.views[i] != undefined)
             {
-               if (this.views[i].id != "") {this.views[i].window.forceClose();}
+               if ((this.views[i].id != "") && (this.views[i].id != this.views[0].id)) {this.views[i].window.forceClose();}
                this.views[i] = undefined;
                this.bitmaps[i] = undefined;
                if (i == 1)
@@ -208,7 +208,10 @@ function GHSViews(view){
          {
             if (this.views[viewNumbers[i]] != undefined)
             {
-               if (this.views[viewNumbers[i]].id != "") {this.views[viewNumbers[i]].window.forceClose();}
+               if ((this.views[viewNumbers[i]].id != "") && (this.views[viewNumbers[i]].id != this.views[0].id))
+               {
+                  this.views[viewNumbers[i]].window.forceClose();
+               }
                this.views[viewNumbers[i]] = undefined;
                this.bitmaps[viewNumbers[i]] = undefined;
                if (viewNumbers[i] < 2)

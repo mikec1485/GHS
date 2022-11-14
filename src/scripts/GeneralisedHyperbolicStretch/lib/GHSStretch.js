@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -53,6 +53,28 @@ function GHSStretch()
    // 7. ST = 2: Arcsinh stretch
 
    this.stretchParameters = new GHSStretchParameters();
+   this.useProcess = true;
+
+   this.getGHSProcess = function()
+   {
+      let returnProcess = new GeneralizedHyperbolicStretch;
+
+      returnProcess.stretchType = this.stretchParameters.ST;
+      returnProcess.stretchChannel = this.stretchParameters.getChannelNumber();
+      returnProcess.stretchFactor = this.stretchParameters.D;
+      returnProcess.localIntensity = this.stretchParameters.b;
+      returnProcess.symmetryPoint = this.stretchParameters.SP;
+      returnProcess.shadowProtection = this.stretchParameters.LP;
+      returnProcess.highlightProtection = this.stretchParameters.HP;
+      returnProcess.blackPoint = this.stretchParameters.BP
+      returnProcess.whitePoint = this.stretchParameters.WP
+      returnProcess.UseRGBWorkingSpace = (this.stretchParameters.lumCoeffSource != "Default");
+      returnProcess.inverse = this.stretchParameters.Inv;
+      returnProcess.clipType = ["Clip", "Rescale"].indexOf(this.stretchParameters.colourClip);
+      returnProcess.colourBlend = 1.0;
+
+      return returnProcess;
+   }
 
    var a1, b1, a2, b2, c2, d2, e2, a3, b3, c3, d3, e3, a4, b4;
 
@@ -1083,15 +1105,102 @@ function GHSStretch()
 
    this.executeOn = function(view, showNewImage = true)
    {
-      this.isBusy = true;
-      this.calculateVariables(view);
-
       let checkValid = this.stretchParameters.validate(view);
       if (checkValid != "")
       {
          Console.criticalln(checkValid);
-         return view;
+
+         //generate new view if required
+         if (this.stretchParameters.createNewImage)
+         {
+            var newImageId = "";
+            if (this.stretchParameters.newImageId != "<Auto>")
+            {
+               let tryNewImageId = this.stretchParameters.newImageId;
+               if (isValidViewId(tryNewImageId)) newImageId = getNewName(tryNewImageId);
+            }
+            if (newImageId == "")
+            {
+               newImageId = getNewName("ghsImage");
+            }
+            let newView = this.applyPixelMath(view, ["", "", "", "$T", ""], newImageId, false, PixelMath.prototype.SameAsTarget);
+            this.stretchParameters.save();
+            newView.beginProcess()
+            newView.image.apply(view.image);
+            newView.endProcess();
+            if (showNewImage) {newView.window.show();}
+            else {newView.window.hide();}
+            this.isBusy = false;
+            return newView;
+         }
+         else
+         {
+            this.isBusy = false;
+            return view;
+         }
       }
+
+      if (this.useProcess && (checkForModule() == 1) && (this.stretchParameters.lumCoeffSource != "Manual") && (this.stretchParameters.ST < 4))
+      {
+         return this.executeOnProcess(view, showNewImage);
+      }
+      else
+      {
+         return this.executeOnScript(view, showNewImage);
+      }
+   }
+
+   this.executeOnProcess = function(view, showNewImage = true)
+   {
+      this.isBusy = true;
+
+      let ghsProcess = this.getGHSProcess()
+
+      let viewToTransform = view;
+
+      if (this.stretchParameters.createNewImage)
+      {
+         var newImageId = "";
+         if (this.stretchParameters.newImageId != "<Auto>")
+         {
+            let tryNewImageId = this.stretchParameters.newImageId;
+            if (isValidViewId(tryNewImageId)) newImageId = getNewName(tryNewImageId);
+         }
+         if (newImageId == "")
+         {
+            newImageId = getNewName("ghsImage");
+         }
+
+         let img = view.image;
+         var wkgViewWindow = new ImageWindow( img.width, img.height, img.numberOfChannels, img.bitsPerSample, img.isReal, img.isColor, newImageId);
+         wkgViewWindow.hide();
+         wkgViewWindow.maskEnabled = view.window.maskEnabled;
+         wkgViewWindow.maskInverted = view.window.maskInverted;
+         wkgViewWindow.mask = view.window.mask;
+         wkgViewWindow.rgbWorkingSpace = new RGBColorSystem(view.window.rgbWorkingSpace);
+
+         let viewToTransform = wkgViewWindow.mainView;
+         viewToTransform.beginProcess(UndoFlag_NoSwapFile);
+         viewToTransform.image.apply(img);
+         viewToTransform.endProcess();
+      }
+
+      //this.stretchParameters.save();
+      ghsProcess.executeOn(viewToTransform);
+
+      if (showNewImage) {viewToTransform.window.show();}
+      else {viewToTransform.window.hide();}
+
+      this.isBusy = false;
+
+      return viewToTransform;
+   }
+
+   this.executeOnScript = function(view, showNewImage = true)
+   {
+      this.isBusy = true;
+
+      this.calculateVariables(view);
 
       let wkgViewId = getNewName("_ghs_temp");
       let img = view.image;

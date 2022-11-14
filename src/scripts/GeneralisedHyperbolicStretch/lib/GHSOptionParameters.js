@@ -4,7 +4,7 @@
  *
  * OPTION PARAMETER OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
@@ -41,6 +41,8 @@ function GHSOptionParameters() {
    this.saveLogCheck = true;
    this.startupRTP = true;
    this.paramHistLink = false;
+   this.supressModuleNotice = false;
+   this.useProcess = true;
    this.zoomMax = 200;
    this.readoutAreaMax = 256;
    this.graphHistActive = new Array(true, true);
@@ -81,6 +83,8 @@ function GHSOptionParameters() {
       returnValue.saveLogCheck = this.saveLogCheck;
       returnValue.startupRTP = this.startupRTP;
       returnValue.paramHistLink = this.paramHistLink;
+      returnValue.supressModuleNotice = this.supressModuleNotice;
+      returnValue.useProcess = this.useProcess;
       returnValue.zoomMax = this.zoomMax;
       returnValue.readoutAreaMax = this.readoutAreaMax;
 
@@ -140,6 +144,8 @@ function GHSOptionParameters() {
       this.saveLogCheck = ghsOP.saveLogCheck;
       this.startupRTP = ghsOP.startupRTP;
       this.paramHistLink = ghsOP.paramHistLink;
+      this.supressModuleNotice = ghsOP.supressModuleNotice;
+      this.useProcess = ghsOP.useProcess;
       this.zoomMax = ghsOP.zoomMax;
       this.readoutAreaMax = ghsOP.readoutAreaMax;
 
@@ -193,6 +199,8 @@ function GHSOptionParameters() {
       Settings.write(KEYPREFIX + "/saveLogCheck", 0, this.saveLogCheck);
       Settings.write(KEYPREFIX + "/startupRTP", 0, this.startupRTP);
       Settings.write(KEYPREFIX + "/paramHistLink", 0, this.paramHistLink);
+      Settings.write(KEYPREFIX + "/supressModuleNotice", 0, this.supressModuleNotice);
+      Settings.write(KEYPREFIX + "/useProcess", 0, this.useProcess);
       Settings.write(KEYPREFIX + "/graphHistActive", 0, this.graphHistActive[0]);
       Settings.write(KEYPREFIX + "/graphStretchHistActive", 0, this.graphHistActive[1]);
       Settings.write(KEYPREFIX + "/graphHistCol", 13, this.graphHistCol[0]);
@@ -253,6 +261,10 @@ function GHSOptionParameters() {
       if (Settings.lastReadOK) this.startupRTP = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/paramHistLink", 0);
       if (Settings.lastReadOK) this.paramHistLink = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/supressModuleNotice", 0);
+      if (Settings.lastReadOK) this.supressModuleNotice = keyValue;
+      keyValue = Settings.read(KEYPREFIX + "/useProcess", 0);
+      if (Settings.lastReadOK) this.useProcess = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphHistActive", 0);
       if (Settings.lastReadOK) this.graphHistActive[0] = keyValue;
       keyValue = Settings.read(KEYPREFIX + "/graphStretchHistActive", 0);

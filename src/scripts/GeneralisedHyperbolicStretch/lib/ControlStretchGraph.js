@@ -4,7 +4,7 @@
  *
  * STRETCH GRAPH CONTROL
  * This control forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.2
+ * Version 2.2.4
  *
  * Copyright (C) 2022  Mike Cranfield
  *
