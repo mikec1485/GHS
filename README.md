@@ -1,5 +1,5 @@
 # GHS
-Generalised Hyperbolic Stretch Version 2.2.4
+Generalised Hyperbolic Stretch Version 2.2.5
 
 This script is designed to run within the Pixinsight Javascript Runtime environment.
 
@@ -13,4 +13,4 @@ It can most easily be installed by adding the following repository information i
 
 The script can alternatively be installed using the Scripts>Feature scripts... menu option in Pixinsight. The subdirectory containing the html documentation and images subdirectory should be copied to the Pixinsight program file installation.  It should be placed as a subdirectory of the Pixinsight>doc>scripts directory.  
 
-Version 2.2.4 has been adapted to use the GHS process module where this is available in the users PixInsight installation.  Source code for the GHS process module is avaolable from the GHS-module repository.
+Since Version 2.2.4 this script has been adapted to use the GHS process module where this is available in the users PixInsight installation.  Source code for the GHS process module is available from the GHS-module repository.
