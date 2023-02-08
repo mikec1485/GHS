@@ -4,7 +4,7 @@
  * GeneralisedHyperbolicStretch Utility
  *
  * GeneralisedHyperbolicStretch.js
- * Copyright (C) 2021, 2022, Mike Cranfield
+ * Copyright (C) 2021-2023 Mike Cranfield
  *
  * This script provides an environment within which to define, appraise and apply
  * a variety of different stretches to an image.  The stretches include a family
@@ -53,10 +53,10 @@
 #feature-info  This script provides an environment within which to define, appraise and apply \
 a variety of different stretches to an image.  The stretches include a family of equations \
 known as Generalised Hyperbolic stretches.<br/>\
-Copyright &copy; 2021, 2022 Mike Cranfield.
+Copyright &copy; 2021, 2022, 2023 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.2.4"
+#define VERSION "2.2.5"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>
