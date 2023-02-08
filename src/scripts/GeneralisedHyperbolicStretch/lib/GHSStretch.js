@@ -4,9 +4,9 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.4
+ * Version 2.2.5
  *
- * Copyright (C) 2022  Mike Cranfield
+ * Copyright (C) 2022-2023  Mike Cranfield
  *
  * *****************************************************************************
  */
@@ -1109,35 +1109,8 @@ function GHSStretch()
       if (checkValid != "")
       {
          Console.criticalln(checkValid);
-
-         //generate new view if required
-         if (this.stretchParameters.createNewImage)
-         {
-            var newImageId = "";
-            if (this.stretchParameters.newImageId != "<Auto>")
-            {
-               let tryNewImageId = this.stretchParameters.newImageId;
-               if (isValidViewId(tryNewImageId)) newImageId = getNewName(tryNewImageId);
-            }
-            if (newImageId == "")
-            {
-               newImageId = getNewName("ghsImage");
-            }
-            let newView = this.applyPixelMath(view, ["", "", "", "$T", ""], newImageId, false, PixelMath.prototype.SameAsTarget);
-            this.stretchParameters.save();
-            newView.beginProcess()
-            newView.image.apply(view.image);
-            newView.endProcess();
-            if (showNewImage) {newView.window.show();}
-            else {newView.window.hide();}
-            this.isBusy = false;
-            return newView;
-         }
-         else
-         {
-            this.isBusy = false;
-            return view;
-         }
+         this.isBusy = false;
+         return view;
       }
 
       if (this.useProcess && (checkForModule() == 1) && (this.stretchParameters.lumCoeffSource != "Manual") && (this.stretchParameters.ST < 4))
@@ -1179,7 +1152,7 @@ function GHSStretch()
          wkgViewWindow.mask = view.window.mask;
          wkgViewWindow.rgbWorkingSpace = new RGBColorSystem(view.window.rgbWorkingSpace);
 
-         let viewToTransform = wkgViewWindow.mainView;
+         viewToTransform = wkgViewWindow.mainView;
          viewToTransform.beginProcess(UndoFlag_NoSwapFile);
          viewToTransform.image.apply(img);
          viewToTransform.endProcess();

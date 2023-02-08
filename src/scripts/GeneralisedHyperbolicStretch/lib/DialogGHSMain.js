@@ -4,9 +4,9 @@
  *
  * MAIN GHS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.4
+ * Version 2.2.5
  *
- * Copyright (C) 2022  Mike Cranfield
+ * Copyright (C) 2022-2023  Mike Cranfield
  *
  * *****************************************************************************
  */
