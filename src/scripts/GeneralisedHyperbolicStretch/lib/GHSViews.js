@@ -4,7 +4,7 @@
  *
  * VIEWS OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.5
+ * Version 2.2.7
  *
  * Copyright (C) 2022-2023  Mike Cranfield
  *

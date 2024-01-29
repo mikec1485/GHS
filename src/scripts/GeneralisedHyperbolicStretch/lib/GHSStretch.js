@@ -4,7 +4,7 @@
  *
  * STRETCH OBJECT
  * This object forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.5
+ * Version 2.2.7
  *
  * Copyright (C) 2022-2023  Mike Cranfield
  *
@@ -59,7 +59,10 @@ function GHSStretch()
    {
       let returnProcess = new GeneralizedHyperbolicStretch;
 
-      returnProcess.stretchType = this.stretchParameters.ST;
+      if (this.stretchParameters.ST < 3)
+         returnProcess.stretchType = this.stretchParameters.ST;
+      if (this.stretchParameters.ST == 3)
+         returnProcess.stretchType = 4;   //Process has power law stretch defined as stretch type 3
       returnProcess.stretchChannel = this.stretchParameters.getChannelNumber();
       returnProcess.stretchFactor = this.stretchParameters.D;
       returnProcess.localIntensity = this.stretchParameters.b;

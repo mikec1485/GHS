@@ -4,7 +4,7 @@
  *
  * UTILITY FUNCTIONS
  * These functions form part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.5
+ * Version 2.2.7
  *
  * Copyright (C) 2022-2023  Mike Cranfield
  *
@@ -42,7 +42,13 @@ function checkForModule()
       case "MacOSX":
          moduleFileName += "GeneralizedHyperbolicStretch-pxm.dylib";
          break;
+      case "macOS":
+         moduleFileName += "GeneralizedHyperbolicStretch-pxm.dylib";
+         break;
       case "MSWindows":
+         moduleFileName += "GeneralizedHyperbolicStretch-pxm.dll";
+         break;
+      case "Windows":
          moduleFileName += "GeneralizedHyperbolicStretch-pxm.dll";
          break;
       case "Linux":
