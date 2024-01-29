@@ -28,6 +28,10 @@
  * 2.2.2   2022-08-10 corrected LCP and HCP calculations for single colour channel stretches
  * 2.2.3   2022-11-02 updates for GHS module release
  * 2.2.4   2022-11-04 clarification that GHS module only available on PI 1.8.9-1
+ * 2.2.5   2023-02-08 bug fix when creating new image and using process module
+ * 2.2.6   2023-07-11 update to allow recognition of macOS on PI 1.8.9-2
+ * 2.2.7   2023-08-15 fix recognising Windows on PI 1.8.9-2
+ * 2.2.8   2023-10-30 fix for Linear Transformation when using process
  *
  *
  ****************************************************************************
@@ -56,7 +60,7 @@ known as Generalised Hyperbolic stretches.<br/>\
 Copyright &copy; 2021, 2022, 2023 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.2.5"
+#define VERSION "2.2.8"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>
