@@ -4,9 +4,8 @@
  *
  * OPTIONS DIALOG
  * This dialog forms part of the GeneralisedHyperbolicStretch.js
- * Version 2.2.7
  *
- * Copyright (C) 2022-2023  Mike Cranfield
+ * Copyright (C) 2022-2024  Mike Cranfield
  *
  * *****************************************************************************
  */
