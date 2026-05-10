@@ -4,7 +4,7 @@
  * GeneralisedHyperbolicStretch Utility
  *
  * GeneralisedHyperbolicStretch.js
- * Copyright (C) 2021-2023 Mike Cranfield
+ * Copyright (C) 2021-2024 Mike Cranfield
  *
  * This script provides an environment within which to define, appraise and apply
  * a variety of different stretches to an image.  The stretches include a family
@@ -32,6 +32,7 @@
  * 2.2.6   2023-07-11 update to allow recognition of macOS on PI 1.8.9-2
  * 2.2.7   2023-08-15 fix recognising Windows on PI 1.8.9-2
  * 2.2.8   2023-10-30 fix for Linear Transformation when using process
+ * 2.2.9   2024-12-17 added icon and CosmicPhotons directory
  *
  *
  ****************************************************************************
@@ -52,15 +53,15 @@
 // ----------------------------------------------------------------------------
 
 
-#feature-id    GeneralisedHyperbolicStretch : Utilities > GeneralisedHyperbolicStretch
-
+#feature-id    GeneralisedHyperbolicStretch : Utilities > GeneralisedHyperbolicStretch | CosmicPhotons > GeneralisedHyperbolicStretch
+#feature-icon  @script_icons_dir/ghs.svg
 #feature-info  This script provides an environment within which to define, appraise and apply \
 a variety of different stretches to an image.  The stretches include a family of equations \
 known as Generalised Hyperbolic stretches.<br/>\
-Copyright &copy; 2021, 2022, 2023 Mike Cranfield.
+Copyright &copy; 2021-2024 Mike Cranfield.
 
 #define TITLE "GeneralisedHyperbolicStretch"
-#define VERSION "2.2.8"
+#define VERSION "2.2.9"
 
 #include <pjsr/Sizer.jsh>
 #include <pjsr/NumericControl.jsh>
